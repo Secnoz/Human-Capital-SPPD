@@ -1,0 +1,465 @@
+{
+  "status": "legacy_formula_audit_with_user_confirmed_primary_tariff",
+  "confirmed": {
+    "tariff_source": "Ketentuan Biaya via MASTER",
+    "payment_layout": "per legacy scenario workbook",
+    "paid_days": "entered by HC; compare with calendar duration"
+  },
+  "scenarios": {
+    "dalam_mobil_dinas": {
+      "source_file": "Master Dalam Provinsi dengan Mobil Dinas.xlsx",
+      "source_sha256": "20693c33ac503e2e539ca5604757f88ffba8aea681c3b709351cfc2182ea0c16",
+      "tariff_groups": [
+        {
+          "id": 1,
+          "aliases": [
+            "Direktur Utama",
+            "Komisaris Utama"
+          ],
+          "daily_allowance": 625000,
+          "city_taxi_daily": 100000,
+          "airport_taxi_once": null,
+          "lodging_cap_reference": "Maks. 1300000",
+          "lodging_lumpsum_reference": 650000,
+          "source_range": "Ketentuan Biaya!A3:G3"
+        },
+        {
+          "id": 2,
+          "aliases": [
+            "Anggota Direksi",
+            "Anggota Komisaris"
+          ],
+          "daily_allowance": 550000,
+          "city_taxi_daily": 100000,
+          "airport_taxi_once": null,
+          "lodging_cap_reference": "Maks. 1000000",
+          "lodging_lumpsum_reference": 500000,
+          "source_range": "Ketentuan Biaya!A5:G5"
+        },
+        {
+          "id": 3,
+          "aliases": [
+            "Dewan Pengawas Syariah",
+            "Head Group",
+            "Staf Khusus",
+            "Kepala Divisi"
+          ],
+          "daily_allowance": 500000,
+          "city_taxi_daily": 100000,
+          "airport_taxi_once": null,
+          "lodging_cap_reference": "Maks. 900000",
+          "lodging_lumpsum_reference": 450000,
+          "source_range": "Ketentuan Biaya!A7:G7"
+        },
+        {
+          "id": 4,
+          "aliases": [
+            "Kepala Cabang Utama",
+            "Komite Dewan Komisaris"
+          ],
+          "daily_allowance": 475000,
+          "city_taxi_daily": 100000,
+          "airport_taxi_once": null,
+          "lodging_cap_reference": "Maks. 800000",
+          "lodging_lumpsum_reference": 400000,
+          "source_range": "Ketentuan Biaya!A11:G11"
+        },
+        {
+          "id": 5,
+          "aliases": [
+            "Kepala Cabang",
+            "Wakil Kepala Divisi"
+          ],
+          "daily_allowance": 400000,
+          "city_taxi_daily": 100000,
+          "airport_taxi_once": null,
+          "lodging_cap_reference": "Maks. 800000",
+          "lodging_lumpsum_reference": 400000,
+          "source_range": "Ketentuan Biaya!A13:G13"
+        },
+        {
+          "id": 6,
+          "aliases": [
+            "Kepala Bagian",
+            "Dir UPZ",
+            "Jabatan Setara Lainnya"
+          ],
+          "daily_allowance": 350000,
+          "city_taxi_daily": 100000,
+          "airport_taxi_once": null,
+          "lodging_cap_reference": "Maks. 700000",
+          "lodging_lumpsum_reference": 350000,
+          "source_range": "Ketentuan Biaya!A15:G15"
+        },
+        {
+          "id": 7,
+          "aliases": [
+            "Kepala Cabang Pembantu",
+            "Kepala Seksi",
+            "Pejabat Fungsional",
+            "Koordinator",
+            "Jabatan Setara Lainnya"
+          ],
+          "daily_allowance": 330000,
+          "city_taxi_daily": 100000,
+          "airport_taxi_once": null,
+          "lodging_cap_reference": "Maks. 600000",
+          "lodging_lumpsum_reference": 300000,
+          "source_range": "Ketentuan Biaya!A18:G18"
+        },
+        {
+          "id": 8,
+          "aliases": [
+            "Pegawai Clerical (Pegawai/Capeg)"
+          ],
+          "daily_allowance": 300000,
+          "city_taxi_daily": 100000,
+          "airport_taxi_once": null,
+          "lodging_cap_reference": "Maks. 600000",
+          "lodging_lumpsum_reference": 300000,
+          "source_range": "Ketentuan Biaya!A23:G23"
+        },
+        {
+          "id": 9,
+          "aliases": [
+            "Pegawai Non Clerical",
+            "Tenaga Honor/Kontrak"
+          ],
+          "daily_allowance": 275000,
+          "city_taxi_daily": 100000,
+          "airport_taxi_once": null,
+          "lodging_cap_reference": "Maks. 600000",
+          "lodging_lumpsum_reference": 300000,
+          "source_range": "Ketentuan Biaya!A24:G24"
+        },
+        {
+          "id": 10,
+          "aliases": [
+            "Pegawai Outsourching",
+            "Tenaga Magang"
+          ],
+          "daily_allowance": 250000,
+          "city_taxi_daily": 100000,
+          "airport_taxi_once": null,
+          "lodging_cap_reference": "Maks. 500000",
+          "lodging_lumpsum_reference": 250000,
+          "source_range": "Ketentuan Biaya!A26:G26"
+        }
+      ],
+      "formula": "daily_allowance * paid_days",
+      "supported_templates": [
+        "Umum"
+      ]
+    },
+    "dalam_provinsi": {
+      "source_file": "Master Dalam Provinsi.xlsx",
+      "source_sha256": "a60cd546b0e6f3be1dbef23a5e723be5262cd0af2a8c08cebb59a60a1292f6c9",
+      "tariff_groups": [
+        {
+          "id": 1,
+          "aliases": [
+            "Direktur Utama",
+            "Komisaris Utama"
+          ],
+          "daily_allowance": 625000,
+          "city_taxi_daily": 100000,
+          "airport_taxi_once": null,
+          "lodging_cap_reference": "Maks. 1300000",
+          "lodging_lumpsum_reference": 650000,
+          "source_range": "Ketentuan Biaya!A3:G3"
+        },
+        {
+          "id": 2,
+          "aliases": [
+            "Anggota Direksi",
+            "Anggota Komisaris"
+          ],
+          "daily_allowance": 550000,
+          "city_taxi_daily": 100000,
+          "airport_taxi_once": null,
+          "lodging_cap_reference": "Maks. 1000000",
+          "lodging_lumpsum_reference": 500000,
+          "source_range": "Ketentuan Biaya!A5:G5"
+        },
+        {
+          "id": 3,
+          "aliases": [
+            "Dewan Pengawas Syariah",
+            "Head Group",
+            "Staf Khusus",
+            "Kepala Divisi"
+          ],
+          "daily_allowance": 500000,
+          "city_taxi_daily": 100000,
+          "airport_taxi_once": null,
+          "lodging_cap_reference": "Maks. 900000",
+          "lodging_lumpsum_reference": 450000,
+          "source_range": "Ketentuan Biaya!A7:G7"
+        },
+        {
+          "id": 4,
+          "aliases": [
+            "Kepala Cabang Utama",
+            "Komite Dewan Komisaris"
+          ],
+          "daily_allowance": 475000,
+          "city_taxi_daily": 100000,
+          "airport_taxi_once": null,
+          "lodging_cap_reference": "Maks. 800000",
+          "lodging_lumpsum_reference": 400000,
+          "source_range": "Ketentuan Biaya!A11:G11"
+        },
+        {
+          "id": 5,
+          "aliases": [
+            "Kepala Cabang",
+            "Wakil Kepala Divisi"
+          ],
+          "daily_allowance": 400000,
+          "city_taxi_daily": 100000,
+          "airport_taxi_once": null,
+          "lodging_cap_reference": "Maks. 800000",
+          "lodging_lumpsum_reference": 400000,
+          "source_range": "Ketentuan Biaya!A13:G13"
+        },
+        {
+          "id": 6,
+          "aliases": [
+            "Kepala Bagian",
+            "Dir UPZ",
+            "Jabatan Setara Lainnya"
+          ],
+          "daily_allowance": 350000,
+          "city_taxi_daily": 100000,
+          "airport_taxi_once": null,
+          "lodging_cap_reference": "Maks. 700000",
+          "lodging_lumpsum_reference": 350000,
+          "source_range": "Ketentuan Biaya!A15:G15"
+        },
+        {
+          "id": 7,
+          "aliases": [
+            "Kepala Cabang Pembantu",
+            "Kepala Seksi",
+            "Pejabat Fungsional",
+            "Koordinator",
+            "Jabatan Setara Lainnya"
+          ],
+          "daily_allowance": 330000,
+          "city_taxi_daily": 100000,
+          "airport_taxi_once": null,
+          "lodging_cap_reference": "Maks. 600000",
+          "lodging_lumpsum_reference": 300000,
+          "source_range": "Ketentuan Biaya!A18:G18"
+        },
+        {
+          "id": 8,
+          "aliases": [
+            "Pegawai Clerical (Pegawai/Capeg)"
+          ],
+          "daily_allowance": 300000,
+          "city_taxi_daily": 100000,
+          "airport_taxi_once": null,
+          "lodging_cap_reference": "Maks. 600000",
+          "lodging_lumpsum_reference": 300000,
+          "source_range": "Ketentuan Biaya!A23:G23"
+        },
+        {
+          "id": 9,
+          "aliases": [
+            "Pegawai Non Clerical",
+            "Tenaga Honor/Kontrak"
+          ],
+          "daily_allowance": 275000,
+          "city_taxi_daily": 100000,
+          "airport_taxi_once": null,
+          "lodging_cap_reference": "Maks. 600000",
+          "lodging_lumpsum_reference": 300000,
+          "source_range": "Ketentuan Biaya!A24:G24"
+        },
+        {
+          "id": 10,
+          "aliases": [
+            "Pegawai Outsourching",
+            "Tenaga Magang"
+          ],
+          "daily_allowance": 250000,
+          "city_taxi_daily": 100000,
+          "airport_taxi_once": null,
+          "lodging_cap_reference": "Maks. 500000",
+          "lodging_lumpsum_reference": 250000,
+          "source_range": "Ketentuan Biaya!A26:G26"
+        }
+      ],
+      "formula": "(daily_allowance + city_taxi_daily) * paid_days + intercity_input",
+      "supported_templates": [
+        "Pendidikan",
+        "Umum"
+      ]
+    },
+    "luar_provinsi": {
+      "source_file": "Master Luar.xlsx",
+      "source_sha256": "7136c0ef01291ca207710a923197f6ddea84bd3839efaed092982040b80e411b",
+      "tariff_groups": [
+        {
+          "id": 1,
+          "aliases": [
+            "Direktur Utama",
+            "Komisaris Utama"
+          ],
+          "daily_allowance": 900000,
+          "city_taxi_daily": 325000,
+          "airport_taxi_once": 700000,
+          "lodging_cap_reference": "Maks. 3000000",
+          "lodging_lumpsum_reference": 1500000,
+          "source_range": "Ketentuan Biaya!A34:K34"
+        },
+        {
+          "id": 2,
+          "aliases": [
+            "Anggota Direksi",
+            "Anggota Komisaris"
+          ],
+          "daily_allowance": 850000,
+          "city_taxi_daily": 325000,
+          "airport_taxi_once": 700000,
+          "lodging_cap_reference": "Maks. 2700000",
+          "lodging_lumpsum_reference": 1350000,
+          "source_range": "Ketentuan Biaya!A36:K36"
+        },
+        {
+          "id": 3,
+          "aliases": [
+            "Dewan Pengawas Syariah",
+            "Head Group",
+            "Staf Khusus",
+            "Kepala Divisi"
+          ],
+          "daily_allowance": 800000,
+          "city_taxi_daily": 325000,
+          "airport_taxi_once": 700000,
+          "lodging_cap_reference": "Maks. 1750000",
+          "lodging_lumpsum_reference": 875000,
+          "source_range": "Ketentuan Biaya!A38:K38"
+        },
+        {
+          "id": 4,
+          "aliases": [
+            "Kepala Cabang Utama",
+            "Komite Dewan Komisaris"
+          ],
+          "daily_allowance": 750000,
+          "city_taxi_daily": 325000,
+          "airport_taxi_once": 700000,
+          "lodging_cap_reference": "Maks. 1500000",
+          "lodging_lumpsum_reference": 750000,
+          "source_range": "Ketentuan Biaya!A42:K42"
+        },
+        {
+          "id": 5,
+          "aliases": [
+            "Kepala Cabang",
+            "Wakil Kepala Divisi"
+          ],
+          "daily_allowance": 700000,
+          "city_taxi_daily": 275000,
+          "airport_taxi_once": 600000,
+          "lodging_cap_reference": "Maks. 1300000",
+          "lodging_lumpsum_reference": 650000,
+          "source_range": "Ketentuan Biaya!A44:K44"
+        },
+        {
+          "id": 6,
+          "aliases": [
+            "Kepala Bagian",
+            "Dir UPZ",
+            "Jabatan Setara Lainnya"
+          ],
+          "daily_allowance": 650000,
+          "city_taxi_daily": 275000,
+          "airport_taxi_once": 600000,
+          "lodging_cap_reference": "Maks. 1200000",
+          "lodging_lumpsum_reference": 600000,
+          "source_range": "Ketentuan Biaya!A46:K46"
+        },
+        {
+          "id": 7,
+          "aliases": [
+            "Kepala Cabang Pembantu",
+            "Kepala Seksi",
+            "Pejabat Fungsional",
+            "Koordinator",
+            "Jabatan Setara Lainnya"
+          ],
+          "daily_allowance": 500000,
+          "city_taxi_daily": 275000,
+          "airport_taxi_once": 600000,
+          "lodging_cap_reference": "Maks. 1000000",
+          "lodging_lumpsum_reference": 500000,
+          "source_range": "Ketentuan Biaya!A49:K49"
+        },
+        {
+          "id": 8,
+          "aliases": [
+            "Pegawai Clerical (Pegawai/Capeg)"
+          ],
+          "daily_allowance": 400000,
+          "city_taxi_daily": 275000,
+          "airport_taxi_once": 600000,
+          "lodging_cap_reference": "Maks. 900000",
+          "lodging_lumpsum_reference": 450000,
+          "source_range": "Ketentuan Biaya!A54:K54"
+        },
+        {
+          "id": 9,
+          "aliases": [
+            "Pegawai Non Clerical",
+            "Tenaga Honor/Kontrak"
+          ],
+          "daily_allowance": 350000,
+          "city_taxi_daily": 275000,
+          "airport_taxi_once": 600000,
+          "lodging_cap_reference": "Maks. 900000",
+          "lodging_lumpsum_reference": 450000,
+          "source_range": "Ketentuan Biaya!A55:K55"
+        },
+        {
+          "id": 10,
+          "aliases": [
+            "Pegawai Outsourching",
+            "Tenaga Magang/Bakat"
+          ],
+          "daily_allowance": 300000,
+          "city_taxi_daily": 275000,
+          "airport_taxi_once": 600000,
+          "lodging_cap_reference": "Maks. 750000",
+          "lodging_lumpsum_reference": 375000,
+          "source_range": "Ketentuan Biaya!A57:K57"
+        }
+      ],
+      "formula": "(daily_allowance + city_taxi_daily) * paid_days + airport_taxi_once",
+      "supported_templates": [
+        "Pendidikan",
+        "Umum"
+      ]
+    }
+  },
+  "purpose_codes": {
+    "umum": "60266",
+    "pendidikan": "60252"
+  },
+  "special_codes_reference_only": {
+    "outs_driver": "65796",
+    "outs_lain": "65800",
+    "bakat": "65974"
+  },
+  "pending": [
+    "transport region cap application",
+    "lodging claim basis",
+    "laundry activation",
+    "special account code precedence",
+    "education with official car template",
+    "continuation pages beyond template capacity",
+    "employee and bank-account master data"
+  ]
+}
