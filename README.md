@@ -4,14 +4,20 @@ Aplikasi internal bagian Kompensasi & Manfaat untuk dua jenis perjalanan dan dua
 
 ## Mulai menggunakan
 
-1. Buka website privat dan masuk dengan akun pemilik. Pemilik pertama menjadi Admin HC.
+1. Buka `/login`, lalu masuk memakai email dan kata sandi khusus SPPD. Akun admin testing adalah `admin@sppd.test`; kata sandi diberikan terpisah kepada pemilik.
 2. Isi nama penandatangan, tanggal mulai berlaku tarif, dan nomor SPPD terakhir tahun berjalan. Jangan memasukkan tanggal berlaku berdasarkan perkiraan.
 3. Tambahkan unit kerja asal beserta alamatnya di Pengaturan.
 4. Tambahkan atau impor pegawai. Gunakan template Excel aplikasi. Nomor pegawai dan rekening harus berformat **Teks** sebelum diketik, agar nol awal terjaga.
 5. Pilih jenis perjalanan, tanggal, hari dibayar, tujuan, dan peserta. Periksa rincian biaya dan kedua lembar cetak; simpan draf atau finalkan.
 6. Unduh PDF dua halaman (SPPD portrait, Permintaan Uang landscape) dan cetak ukuran aktual/100%.
 
-Admin mengelola pegawai, tarif, unit kerja, pengaturan, akses, pembatalan, dan cadangan. Petugas HC membuat draf, finalisasi, cetak, dan rekap. Izin akun dalam aplikasi tetap memerlukan izin membuka Site privat oleh pemilik melalui berbagi Site. Versi pertama diterbitkan khusus pemilik, tanpa memperluas audiens.
+Admin mengelola pegawai, tarif, unit kerja, pengaturan, akun, pembatalan, dan cadangan. Petugas HC membuat draf, finalisasi, cetak, dan rekap. Untuk pengujian ini, halaman login dapat dibuka umum. Data dan API tetap memerlukan sesi akun SPPD aktif. Penguji tidak memerlukan akun ChatGPT. Admin membuat akun melalui **Pengaturan → Akun Human Capital → Tambah akun**. Pendaftaran mandiri ditutup.
+
+## Login dan akun
+
+Better Auth 1.7.14 menyimpan akun dan sesi di D1. Kata sandi menggunakan scrypt native (`N=16384,r=16,p=1`), cookie sesi HttpOnly/SameSite, masa sesi 8 jam, serta pembatasan percobaan login di database. Hanya endpoint masuk, keluar, sesi, dan ganti kata sandi yang dibuka. Pembuatan akun dan reset kata sandi penguji melalui API aplikasi memerlukan peran Admin HC. Penonaktifan, reset kata sandi, dan perubahan peran mencabut sesi akun terkait. Semua perubahan tetap diperiksa terhadap tabel anggota pada setiap permintaan.
+
+Atur `BETTER_AUTH_SECRET` dan `SPPD_ADMIN_PASSWORD_HASH` sebagai secrets runtime Sites. Hash bootstrap harus menggunakan format scrypt yang sama dengan `src/lib/password.ts`. Worker menambahkan admin sekali dengan `INSERT OR IGNORE`; pembaruan berikutnya tidak mengembalikan kata sandi awal. Jangan menyimpan kata sandi atau secret di source, GitHub, atau bundle browser. Akun ChatGPT dan daftar anggota lama tetap tersimpan, tetapi belum bisa memakai login baru sampai admin menetapkan kata sandi untuknya.
 
 ## Perhitungan v2 (29 Oktober 2026)
 
@@ -82,13 +88,14 @@ node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1
 node scripts/run-framework.mjs dev
 ```
 
-Pratinjau lokal `http://127.0.0.1:5173/` menggunakan identitas mock Seedy dari starter. Mock hanya aktif pada server pengembangan lokal; produksi memakai identitas ChatGPT dari Sites. Data D1 lokal dan data produksi terpisah; data uji lokal tidak diunggah.
+Pratinjau lokal `http://127.0.0.1:5173/` memakai alur email/kata sandi yang sama dengan produksi. Isi kedua secret di `.dev.vars` yang diabaikan Git, lalu terapkan seluruh migration lokal yang belum ada. Data D1 lokal dan produksi terpisah; data uji lokal tidak diunggah.
 
 ```powershell
 node node_modules/typescript/bin/tsc --noEmit
 node scripts/verify-domain.mjs
 node scripts/verify-v2.mjs
 node scripts/verify-api.mjs
+node scripts/verify-login.mjs
 ```
 
 `verify-api.mjs` hanya mengarah ke loopback lokal dan menambahkan data uji. Lengkapi pengaturan awal lokal terlebih dahulu. Halaman `/qa-print` hanya tersedia dalam development, menguji semua 8 template dengan kapasitas peserta penuh. Pada produksi halaman ini 404.

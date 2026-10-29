@@ -1,0 +1,43 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import {randomBytes} from 'node:crypto';
+const base='http://127.0.0.1:5173';let checks=0;
+const password=(await fs.readFile('../outputs/Akun-Admin-SPPD.txt','utf8')).match(/Kata sandi awal: (.+)/)[1];
+async function call(path,{method='GET',body,cookie='',status=200,origin=base,ip}={}){
+ const response=await fetch(base+path,{method,headers:{cookie,origin,...(ip?{'cf-connecting-ip':ip}:{}),...(body?{'content-type':'application/json'}:{})},body:body?JSON.stringify(body):undefined,redirect:'manual'});
+ assert.equal(response.status,status,`${path}: ${await response.clone().text()}`);checks++;
+ return response;
+}
+async function login(email,password,status=200){const r=await call('/api/auth/sign-in/email',{method:'POST',body:{email,password,rememberMe:false},status});return r.headers.getSetCookie().map(value=>value.split(';')[0]).join('; ');}
+await call('/',{status:307});await call('/api/bootstrap',{status:401});
+await call('/api/auth/sign-up/email',{method:'POST',body:{email:'any@sppd.test',password:'Some-password-123',name:'Any'},status:404});
+await call('/api/auth/admin/create-user',{method:'POST',body:{},status:404});
+await login('admin@sppd.test','Wrong-password-123',401);
+const admin=await login('admin@sppd.test',password);
+const boot=await (await call('/api/bootstrap',{cookie:admin})).json();
+assert.equal(boot.user.role,'admin');assert.equal(boot.user.email,'admin@sppd.test');checks+=2;
+assert.equal(boot.employees.filter(e=>/^DM\d{3}$/.test(e.employeeNo)).length,100);checks++;
+const account={email:`penguji-${Date.now()}@sppd.test`,name:'Penguji Login Lokal',password:'Local-'+randomBytes(15).toString('base64url'),role:'staff',active:1};
+await call('/api/members',{method:'POST',cookie:admin,body:account});
+const staff=await login(account.email,account.password);
+const staffBoot=await (await call('/api/bootstrap',{cookie:staff})).json();
+assert.equal(staffBoot.user.role,'staff');assert.deepEqual(staffBoot.members,[]);checks+=2;
+for(const path of ['/api/members','/api/employees','/api/settings','/api/backup'])await call(path,{method:path==='/api/settings'?'PATCH':'POST',cookie:staff,body:{},status:403});
+await call('/api/members',{method:'POST',cookie:admin,body:{...account,active:0,password:''}});
+await call('/api/bootstrap',{cookie:staff,status:401});
+const resetPassword='Local-reset-'+randomBytes(15).toString('base64url');
+await call('/api/members',{method:'POST',cookie:admin,body:{...account,password:resetPassword}});
+await login(account.email,account.password,401);
+const renewed=await login(account.email,resetPassword);
+await call('/api/bootstrap',{cookie:renewed});
+const changedPassword='Changed-'+randomBytes(15).toString('base64url');
+await call('/api/auth/change-password',{method:'POST',cookie:renewed,body:{currentPassword:resetPassword,newPassword:changedPassword,revokeOtherSessions:true}});
+await login(account.email,resetPassword,401);
+const changedSession=await login(account.email,changedPassword);
+await call('/api/auth/sign-out',{method:'POST',cookie:changedSession,body:{}});
+await call('/api/bootstrap',{cookie:changedSession,status:401});
+await call('/api/auth/sign-out',{method:'POST',cookie:renewed,body:{}});
+await call('/api/bootstrap',{cookie:renewed,status:401});
+await call('/api/auth/sign-in/email',{method:'POST',body:{email:'admin@sppd.test',password},status:403,origin:'https://example.org'});
+for(let index=0;index<11;index++)await call('/api/auth/sign-in/email',{method:'POST',ip:'192.0.2.80',body:{email:'rate-limit@sppd.test',password:'Not-a-valid-password'},status:index<10?401:429});
+console.log(`${checks} pemeriksaan login lulus: admin, akun petugas, pendaftaran tertutup, peran, nonaktifkan akun, reset/ganti kata sandi, keluar, CSRF, dan pembatasan percobaan.`);

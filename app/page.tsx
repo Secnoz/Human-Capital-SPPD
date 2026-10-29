@@ -1,3 +1,5 @@
-import { requireChatGPTUser } from './chatgpt-auth';
+import { getAppUser } from '../src/lib/auth';
+import { redirect } from 'next/navigation';
 import Workspace from './workspace';
-export default async function Home(){await requireChatGPTUser('/');return <Workspace/>;}
+export const dynamic='force-dynamic';
+export default async function Home(){if(!await getAppUser())redirect('/login');return <Workspace/>;}

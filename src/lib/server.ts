@@ -1,5 +1,5 @@
 import { env } from 'cloudflare:workers';
-import { getChatGPTUser } from '../../app/chatgpt-auth';
+import { getAppUser } from './auth';
 import { calculate, seedTariffs, today, validDate, SCENARIOS, type TripData, type Employee, type Tariff, type Settings, type TripRecord } from './domain';
 
 export class HttpError extends Error{constructor(public status:number,message:string){super(message);}}
@@ -12,10 +12,8 @@ export const TRIP_SQL='SELECT id,number,status,data,total,departure_date AS depa
 export const parseTrip=(r:Record<string,unknown>)=>({...r,data:JSON.parse(r.data as string)}) as unknown as TripRecord;
 export async function settings(){const row=await one<{value:string}>('SELECT value FROM settings WHERE key=?','app');return row?JSON.parse(row.value) as Settings:null;}
 export async function context(){
- const user=await getChatGPTUser();if(!user)throw new HttpError(401,'Silakan masuk menggunakan akun Anda.');
+ const user=await getAppUser();if(!user)throw new HttpError(401,'Silakan masuk menggunakan email dan kata sandi.');
  const email=user.email.toLowerCase();
- await db().prepare('INSERT OR IGNORE INTO settings(key,value) VALUES(?,?)').bind('__owner',user.userId).run();
- await db().prepare("INSERT OR IGNORE INTO members(email,user_id,name,role,active) SELECT ?,?,?, 'admin',1 WHERE (SELECT value FROM settings WHERE key='__owner')=?").bind(email,user.userId,user.displayName,user.userId).run();
  const member=await one<{email:string;user_id:string|null;name:string;role:'admin'|'staff';active:number}>('SELECT * FROM members WHERE email=?',email);
  if(!member||!member.active)throw new HttpError(403,'Akun ini belum mendapat akses Human Capital. Hubungi Admin HC.');
  if(member.user_id&&member.user_id!==user.userId)throw new HttpError(403,'Identitas akun tidak cocok.');
@@ -43,7 +41,7 @@ export function employeeStatement(e:Employee){return db().prepare('INSERT INTO e
 export async function tripById(id:string){const r=await one<Record<string,unknown>>(TRIP_SQL+' WHERE id=?',id);if(!r)throw new HttpError(404,'SPPD tidak ditemukan.');return parseTrip(r);}
 export async function backup(actor:string){
  if(!env.BUCKET)throw new HttpError(503,'Penyimpanan cadangan belum tersedia.');
- const tables=['members','settings','employees','offices','tariffs','trips','counters','audit','files'];const content:Record<string,unknown>={version:1,site:'SPPD-HC',createdAt:new Date().toISOString()};for(const table of tables)content[table]=await rows(`SELECT * FROM ${table}`);
+ const tables=['members','settings','employees','offices','tariffs','trips','counters','audit','files','auth_user','auth_account'];const content:Record<string,unknown>={version:2,site:'SPPD-HC',createdAt:new Date().toISOString()};for(const table of tables)content[table]=await rows(`SELECT * FROM ${table}`);
  const key=`backups/${new Date().toISOString().slice(0,10)}/${crypto.randomUUID()}.json`;await env.BUCKET.put(key,JSON.stringify(content),{httpMetadata:{contentType:'application/json'}});await log(actor,'backup.created',key);return{key,createdAt:content.createdAt};
 }
 export async function autoBackup(actor:string){if(!env.BUCKET)return;const day=today();const result=await db().prepare("INSERT INTO settings(key,value) VALUES('__backup_day',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value WHERE settings.value<>excluded.value").bind(day).run();if(result.meta.changes){try{await backup(actor);}catch{await db().prepare("DELETE FROM settings WHERE key='__backup_day' AND value=?").bind(day).run();}}}

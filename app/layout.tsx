@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./login/login.css";
 
 export const metadata: Metadata = {
   title: "SPPD · Human Capital",

@@ -1,4 +1,5 @@
 import {mapRequest,providerUrl,MAP_DEFAULTS} from '../../../src/lib/maps-server';
+import {saveAccount} from '../../../src/lib/accounts';
 import { env } from 'cloudflare:workers';
 import { context,admin,db,rows,one,settings,setup,log,text,cleanData,validEmployee,employeeStatement,tripById,finalize,backup,autoBackup,HttpError,EMPLOYEE_SQL,TARIFF_SQL,TRIP_SQL,parseTrip } from '../../../src/lib/server';
 import { calculate,validDate,SCENARIOS,type Employee,type Tariff } from '../../../src/lib/domain';
@@ -13,7 +14,7 @@ async function handle(req:Request){
   if(path[0]==='maps'&&method==='GET'){output=await mapRequest(path[1],url);
   }else if(path[0]==='bootstrap'&&method==='GET'){
    const s=await settings();await autoBackup(c.email);
-   output={user:c,settings:s,employees:await rows(EMPLOYEE_SQL+' ORDER BY name'),offices:await rows('SELECT id,name,address,lat,lng,place_id AS placeId FROM offices ORDER BY name'),tariffs:await rows(TARIFF_SQL+' ORDER BY scenario,criterion,valid_from'),trips:(await rows(TRIP_SQL+' ORDER BY updated_at DESC')).map(parseTrip),members:c.role==='admin'?await rows('SELECT email,name,role,active FROM members ORDER BY name'):[],audit:c.role==='admin'?await rows('SELECT * FROM audit ORDER BY at DESC LIMIT 100'):[]};
+   output={user:c,settings:s,employees:await rows(EMPLOYEE_SQL+' ORDER BY name'),offices:await rows('SELECT id,name,address,lat,lng,place_id AS placeId FROM offices ORDER BY name'),tariffs:await rows(TARIFF_SQL+' ORDER BY scenario,criterion,valid_from'),trips:(await rows(TRIP_SQL+' ORDER BY updated_at DESC')).map(parseTrip),members:c.role==='admin'?await rows("SELECT email,name,role,active,EXISTS(SELECT 1 FROM auth_account WHERE user_id=members.user_id AND provider_id='credential') AS hasLogin FROM members ORDER BY name"):[],audit:c.role==='admin'?await rows('SELECT * FROM audit ORDER BY at DESC LIMIT 100'):[]};
   }else if(path[0]==='setup'&&method==='POST'){admin(c);output=await setup(body,c.email);
   }else if(path[0]==='employees'){
    admin(c);
@@ -29,7 +30,7 @@ async function handle(req:Request){
   }else if(path[0]==='settings'&&method==='PATCH'){
    admin(c);const old=await settings();if(!old)throw new HttpError(400,'Siapkan ruang kerja terlebih dahulu.');const next={...old,mapTileUrl:providerUrl(body.mapTileUrl,MAP_DEFAULTS.mapTileUrl),mapRouteUrl:providerUrl(body.mapRouteUrl,MAP_DEFAULTS.mapRouteUrl),mapSearchUrl:providerUrl(body.mapSearchUrl,MAP_DEFAULTS.mapSearchUrl),company:text(body.company,80),issueCity:text(body.issueCity,80),signerName:text(body.signerName,100),signerPosition:text(body.signerPosition,80),commander:text(body.commander,120),numberPattern:text(body.numberPattern,120),mapsKey:text(body.mapsKey,300)};if(!next.company||!next.signerName||!next.signerPosition||!next.commander||!next.issueCity||next.numberPattern.split('{sequence}').length!==2||!next.numberPattern.includes('{year}'))throw new HttpError(400,'Lengkapi pengaturan dan format nomor ({sequence} dan {year}).');await db().prepare('UPDATE settings SET value=? WHERE key=?').bind(JSON.stringify(next),'app').run();await log(c.email,'settings.updated','app',{mapsConfigured:!!next.mapsKey});output={ok:true};
   }else if(path[0]==='members'&&method==='POST'){
-   admin(c);const email=text(body.email,150).toLowerCase(),name=text(body.name,100),role=body.role==='admin'?'admin':'staff',active=body.active===0?0:1;if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||!name)throw new HttpError(400,'Nama dan email tidak valid.');if(email===c.email&&(role!=='admin'||!active))throw new HttpError(400,'Anda tidak dapat menonaktifkan atau menurunkan peran sendiri.');await db().prepare('INSERT INTO members(email,name,role,active) VALUES(?,?,?,?) ON CONFLICT(email) DO UPDATE SET name=excluded.name,role=excluded.role,active=excluded.active').bind(email,name,role,active).run();await log(c.email,'member.saved',email,{role,active});output={ok:true};
+   admin(c);output=await saveAccount(body,c);
   }else if(path[0]==='trips'){
    const id=path[1],action=path[2];
    if(id&&action==='finalize'&&method==='POST'){output=await finalize(id,Number(body.revision),c.email);

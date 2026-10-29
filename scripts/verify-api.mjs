@@ -1,6 +1,11 @@
 // Mutates only the disposable loopback development database. Never production.
 import assert from 'node:assert/strict';
-const base='http://127.0.0.1:5173/api/';let checks=0;async function call(path,method='GET',body,status=200,auth=true){const r=await fetch(base+path,{method,headers:{...(auth?{cookie:'__sites_local_auth=1'}:{}),...(method==='GET'?{}:{'content-type':'application/json',origin:'http://127.0.0.1:5173'})},body:body===undefined?undefined:JSON.stringify(body)});const data=await r.json();assert.equal(r.status,status,JSON.stringify(data));checks++;return data;}
+import fs from 'node:fs/promises';
+const base='http://127.0.0.1:5173/api/';
+const password=(await fs.readFile('../outputs/Akun-Admin-SPPD.txt','utf8')).match(/Kata sandi awal: (.+)/)[1];
+const session=await fetch(base+'auth/sign-in/email',{method:'POST',headers:{'content-type':'application/json',origin:'http://127.0.0.1:5173'},body:JSON.stringify({email:'admin@sppd.test',password,rememberMe:false})});
+assert.equal(session.status,200);const cookie=session.headers.getSetCookie().map(value=>value.split(';')[0]).join('; ');
+let checks=0;async function call(path,method='GET',body,status=200,auth=true){const r=await fetch(base+path,{method,headers:{...(auth?{cookie}:{}),...(method==='GET'?{}:{'content-type':'application/json',origin:'http://127.0.0.1:5173'})},body:body===undefined?undefined:JSON.stringify(body)});const data=await r.json();assert.equal(r.status,status,JSON.stringify(data));checks++;return data;}
 await call('bootstrap','GET',undefined,401,false);const boot=await call('bootstrap');if(!boot.settings)await call('setup','POST',{company:'BANK KALSEL',issueCity:'Banjarmasin',signerName:'Penandatangan Uji',validFrom:'2026-01-01',lastNumber:0});
 const e=await call('employees','POST',{employeeNo:'T'+Date.now().toString().slice(-5),name:'Pegawai Uji V2',position:'Kepala Seksi',unit:'Unit Uji',criterion:3,creditName:'Penerima Master',bankAccount:'00123456789',active:1});const o=await call('offices','POST',{name:'Unit Uji V2',address:'Banjarmasin, Kalimantan Selatan',lat:-3.32,lng:114.59});
 const trip=scenario=>({costVersion:2,scenario,purpose:'umum',issueDate:'2026-10-29',issueCity:'Banjarmasin',originOfficeId:o.id,origin:'Unit Uji',destination:'Banjarbaru',reason:'Pengujian sistem',departureDate:'2026-10-29',returnDate:'2026-10-31',paidDays:3,nights:2,dayReason:'',transport:'Mobil',participants:[{employeeId:e.id,intercity:0,adjustmentReason:''}],note:'DATA UJI LOKAL'});
