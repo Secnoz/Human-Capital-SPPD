@@ -2,6 +2,8 @@
 
 Aplikasi internal bagian Kompensasi & Manfaat untuk dua jenis perjalanan dan dua dokumen resmi. Sumber tarif: tiga workbook lama, sheet **Ketentuan Biaya**, bukan tabel bantu pembagian uang makan.
 
+Identitas tampilan mengikuti palet biru, hijau, dan putih yang diberikan pengguna. Token warna, pemakaian logo, dan sumber aset dijelaskan di [BRAND.md](BRAND.md).
+
 ## Mulai menggunakan
 
 1. Buka `/login`, lalu masuk memakai email dan kata sandi khusus SPPD. Akun admin testing adalah `admin@sppd.test`; kata sandi diberikan terpisah kepada pemilik.
