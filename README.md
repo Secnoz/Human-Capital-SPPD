@@ -1,6 +1,6 @@
 # SPPD Human Capital
 
-Aplikasi internal bagian Kompensasi & Manfaat untuk tiga jenis perjalanan dan dua dokumen resmi. Sumber tarif: tiga workbook lama, sheet **Ketentuan Biaya**, bukan tabel bantu pembagian uang makan.
+Aplikasi internal bagian Kompensasi & Manfaat untuk dua jenis perjalanan dan dua dokumen resmi. Sumber tarif: tiga workbook lama, sheet **Ketentuan Biaya**, bukan tabel bantu pembagian uang makan.
 
 ## Mulai menggunakan
 
@@ -13,25 +13,43 @@ Aplikasi internal bagian Kompensasi & Manfaat untuk tiga jenis perjalanan dan du
 
 Admin mengelola pegawai, tarif, unit kerja, pengaturan, akses, pembatalan, dan cadangan. Petugas HC membuat draf, finalisasi, cetak, dan rekap. Izin akun dalam aplikasi tetap memerlukan izin membuka Site privat oleh pemilik melalui berbagi Site. Versi pertama diterbitkan khusus pemilik, tanpa memperluas audiens.
 
-## Perhitungan
+## Perhitungan v2 (29 Oktober 2026)
 
-| Jenis | Rumus per peserta |
+Hanya dua jenis tersedia pada pembuatan baru:
+
+| Jenis | Nilai otomatis per peserta |
 | --- | --- |
-| Dalam provinsi, mobil dinas | Uang saku harian × hari dibayar |
-| Dalam provinsi | Uang saku harian × hari + taksi kota Rp100.000 × hari + transport antar kota manual satu kali |
-| Luar provinsi | Uang saku harian × hari + taksi kota harian × hari + taksi bandara satu kali |
+| Dalam provinsi | Uang saku harian × hari dibayar; taksi kota opsional (jika dicentang: tarif harian × hari); transport antar kota opsional satu kali |
+| Luar provinsi | Uang saku harian × hari dibayar + taksi bandara satu kali + taksi kota satu kali |
 
-Kriteria 1–10 dipilih eksplisit pada pegawai, kemudian tarif tepat sesuai tanggal berangkat. Kode reguler Umum 60266 dan Pendidikan 60252. Pengemudi/outsource/magang memakai kode khusus hanya setelah ditetapkan HC dan diberi alasan. Tidak menambahkan uang makan lagi; penginapan/laundry/tiket tidak diaktifkan otomatis karena tidak masuk rumus utama MASTER. Pendidikan dengan mobil dinas belum tersedia karena tidak ada template sumber.
+Uang saku, taksi kota, dan taksi bandara merupakan input total per orang yang dapat diedit HC. `null` berarti otomatis; **0 adalah nilai manual sah**, bukan pengaktifan ulang otomatis. Tombol **Gunakan nilai otomatis** mengembalikan hasil sesuai ketentuan. Mengubah hari memperbarui nilai otomatis, sementara nominal manual tetap berlabel **Diubah HC**. Tidak menambahkan uang makan lagi.
 
-Hari dibayar tetap dipilih HC. Selisih dari durasi kalender inklusif harus diberi alasan. Total menjumlahkan semua peserta yang dipilih. Menghapus peserta menghapus seluruh komponennya. Taksi bandara bukan per hari dan tidak digandakan menjadi pulang-pergi.
+Kode beban, nama penerima, dan rekening terisi otomatis. Penyesuaian penerima/rekening tersimpan khusus pada peserta di SPPD tersebut; master tetap utuh. Catatan penyesuaian tersedia. Kode khusus pengemudi/outsource/magang tetap memerlukan dasar penggunaan. Nomor rekening selalu teks.
 
-## Peta
+Hari dibayar ditetapkan HC. Selisih dari hari kalender wajib diberi alasan. Saat jenis perjalanan diganti, override biaya direset agar biaya jenis sebelumnya tidak terbawa tersembunyi.
 
-Isi **Google Maps API key browser** di Pengaturan. Aktifkan billing, Maps JavaScript API, Routes API, dan Places API (New). Batasi key ke HTTP referrer domain Site serta API yang diperlukan, dengan kuota sesuai perusahaan. Kolom ini memang disiapkan kosong karena key belum tersedia.
+Final lama tidak dihitung ulang. Draf lama dibuka dengan pemberitahuan aturan baru dan harus diperiksa/simpan ulang sebelum finalisasi. Jenis mobil dinas lama dipetakan menjadi dalam provinsi saat membuat salinan atau melanjutkan draf, sementara arsip final mempertahankan template/nominalnya. Master mobil dinas lama tetap dapat tersimpan sebagai data historis; UI tarif dan pembuatan hanya menampilkan dua jenis.
 
-Jarak adalah rute kendaraan **sekali jalan dari unit kerja asal**, bukan garis lurus. Nilai peta tidak otomatis mengisi maksimum transport atau mengubah rumus biaya. Batas tepat 100 km tetap memerlukan keputusan HC karena sumber tumpang tindih. Rute dan estimasi ditampilkan sementara; tanpa layanan aktif HC dapat mengisi jarak beserta sumber/alasan dan menetapkan wilayah. Untuk penerbangan, peta hanya referensi ruas darat. Peta tidak ikut dicetak.
+## Peta open-source
 
-Implementasi memakai [Routes library](https://developers.google.com/maps/documentation/javascript/routes/get-a-route). Uji live API menunggu key perusahaan; kegagalan layanan tidak menghasilkan jarak atau wilayah palsu.
+Peta dalam provinsi memakai [mapcn](https://github.com/AnmolSaini16/mapcn) / MapLibre, peta dasar OpenStreetMap, routing [OSRM](https://project-osrm.org/docs/v5.24.0/api/#route-service), dan pencarian [Photon](https://github.com/komoot/photon). Tidak membutuhkan Google Maps API key. Komponen mapcn disalin dari commit `20c40868d5d39883a18073604d9587fb373af65e`, lisensi di `vendor/mapcn.LICENSE`. Worker MapLibre dibundel dari paket npm lokal.
+
+1. Pilih unit kerja asal. Jika koordinatnya tersedia, titik A otomatis terpasang.
+2. Jika koordinat belum ada, pilih tab **Titik unit asal**, cari alamat atau pasang pin tepat pada unit tersebut.
+3. Cari tujuan lewat tombol **Cari lokasi**, atau klik/geser pin B. Tidak ada pencarian otomatis per ketikan.
+4. Tekan **Hitung rute sekali jalan**. Hasil jarak, durasi, dan wilayah referensi dapat diterima sebagai penetapan HC.
+
+Jarak adalah rute kendaraan **sekali jalan dari unit kerja asal**. Maksimum wilayah tidak otomatis menjadi nominal pembayaran. Tepat 100 km masih memerlukan keputusan HC. Peta tidak dicetak pada dokumen resmi. Untuk luar provinsi, kedua taksi tetap per perjalanan dan form tidak menampilkan peta.
+
+Admin dapat mengganti URL tile, server OSRM, dan server Photon di Pengaturan tanpa mengubah kode. Default adalah layanan publik yang berbatas, tanpa jaminan ketersediaan. API pencarian/rute memerlukan login HC; permintaan keluar dibatasi per aplikasi dan hasil dicache di R2 selama 6 jam. Hanya koordinat/alamat tempat yang diminta, tanpa nama pegawai, rekening, atau nominal biaya. Endpoint wajib HTTPS publik. Peta mengikuti cache browser dan menampilkan atribusi OpenStreetMap secara terlihat. Tidak ada fitur unduhan/prefetch tile massal; kebijakan: https://operations.osmfoundation.org/policies/tiles/ .
+
+Jika geocoder tidak menemukan tempat, pin manual tetap tersedia. Jika routing tidak tersedia, jarak manual bersumber tetap tersedia. Jika WebGL2 tidak tersedia, kegagalan peta ditampilkan pada panel tanpa merusak form SPPD.
+
+## Laporan SPPD perorangan
+
+Menu **Laporan perorangan** mendukung pilihan pegawai, rentang tanggal berangkat, jenis perjalanan, pembebanan, dan unit pada arsip. Ringkasan menampilkan jumlah SPPD, hari dibayar, subtotal tiap komponen, serta total per pegawai. Rincian menampilkan dokumen, tujuan/keperluan, penerima/rekening, beban, dan komponen biaya. Unduh **Ringkasan Excel** atau **Rincian Excel**.
+
+Laporan mengambil nilai yang telah dikunci pada SPPD final, termasuk penyesuaian HC. Perubahan tarif/pegawai terbaru tidak mengubah laporan historis. Draf dan batal dikecualikan dari total. Filter pegawai memakai ID yang stabil, bukan mencocokkan nama bebas.
 
 ## Ketepatan cetak
 
@@ -69,6 +87,7 @@ Pratinjau lokal `http://127.0.0.1:5173/` menggunakan identitas mock Seedy dari s
 ```powershell
 node node_modules/typescript/bin/tsc --noEmit
 node scripts/verify-domain.mjs
+node scripts/verify-v2.mjs
 node scripts/verify-api.mjs
 ```
 
@@ -76,12 +95,13 @@ node scripts/verify-api.mjs
 
 Jika shim `npm.cmd` Windows bermasalah, gunakan Node langsung untuk build/dev seperti di atas; jangan mengubah kebijakan lifecycle scripts sistem. Migrations dibuat dengan Drizzle dan diterapkan Sites sebelum Worker diterbitkan. Jangan membuat schema melalui endpoint aplikasi.
 
-## Verifikasi yang dilakukan
+## Verifikasi revisi v2
 
 - TypeScript dan build produksi lulus.
-- 294 pemeriksaan domain: 30 tarif × tiga durasi, batas wilayah, validasi peserta/tanggal, kode, snapshot identitas, dan terbilang.
-- 23 pemeriksaan API: autentikasi, simpan tiga jenis, finalisasi bersamaan idempoten, nomor urut, penguncian data, pembatalan, dan konflik revisi.
-- 8 varian dengan 8/9 peserta lulus ruang cetak; PDF gabungan memiliki 8 halaman A4 sesuai orientasi.
-- Pemeriksaan sumber terpisah di workspace induk memuat 57 pemeriksaan struktur dan aritmetika workbook. Itu tidak menggantikan rekalkulasi native seluruh rumus Excel.
+- 147 pemeriksaan aturan baru dan laporan perorangan.
+- 31 pemeriksaan API, termasuk override, nol awal rekening, master tidak berubah, finalisasi bersamaan, penguncian, dan validasi peta.
+- 294 pemeriksaan regresi aturan lama untuk arsip/fixture template.
+- Pencarian Photon dan routing OSRM diuji live menggunakan lokasi umum Banjarmasin–Banjarbaru; hasil tersedia dalam meter dan garis rute.
+- Form browser diuji dengan uang saku/penerima/rekening berbeda dari master; pratinjau tetap mengikuti template sumber.
 
-Hal yang memerlukan data perusahaan: daftar pegawai/rekening yang sudah diverifikasi, alamat unit, nama penandatangan, tanggal berlaku, nomor terakhir, akses akun HC, API key peta, serta pemeriksaan cetak akhir oleh HC pada printer yang digunakan.
+Hal yang memerlukan data perusahaan: data pegawai/rekening terverifikasi, alamat/pin unit, penandatangan, tanggal berlaku, nomor terakhir, serta pemeriksaan cetak akhir pada printer operasional.

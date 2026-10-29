@@ -1,18 +1,16 @@
-// Run only against the disposable local development database. Never a hosted URL.
+// Mutates only the disposable loopback development database. Never production.
 import assert from 'node:assert/strict';
-const base='http://127.0.0.1:5173/api/';let checks=0;
-async function call(p,m='GET',body,expected=200,auth=true){const r=await fetch(base+p,{method:m,headers:{...(auth?{cookie:'__sites_local_auth=1'}:{}),...(m==='GET'?{}:{'content-type':'application/json',origin:'http://127.0.0.1:5173'})},body:body===undefined?undefined:JSON.stringify(body)});const d=await r.json();assert.equal(r.status,expected,JSON.stringify(d));checks++;return d;}
-await call('bootstrap','GET',undefined,401,false);const b=await call('bootstrap');assert.ok(b.settings,'Complete the local setup form first.');
-const tag=Date.now().toString();const e=await call('employees','POST',{employeeNo:'U'+tag.slice(-4),name:'Pegawai Uji',position:'Jabatan Uji',unit:'Unit Uji',criterion:3,creditName:'Pegawai Uji',bankAccount:'00123456789',active:1});
-const o=await call('offices','POST',{name:'Unit Uji',address:'Banjarmasin, Kalimantan Selatan'});
-const trip=scenario=>({scenario,purpose:'umum',issueDate:'2026-10-23',issueCity:'Banjarmasin',originOfficeId:o.id,origin:'Unit Uji',destination:'Banjarbaru',reason:'Pengujian sistem',departureDate:'2026-10-24',returnDate:'2026-10-26',paidDays:3,nights:2,dayReason:'',transport:'Mobil',participants:[{employeeId:e.id,intercity:500000,adjustmentReason:''}],note:'DATA UJI LOKAL'});
-const created=[];for(const scenario of ['dalam_mobil_dinas','dalam_provinsi','luar_provinsi'])created.push(await call('trips','POST',{data:trip(scenario)}));
-assert.deepEqual(created.map(t=>t.total),[1500000,2300000,4075000]);checks++;
-const d=created[0];const finals=await Promise.all([call(`trips/${d.id}/finalize`,'POST',{revision:d.revision}),call(`trips/${d.id}/finalize`,'POST',{revision:d.revision})]);assert.equal(finals[0].number,finals[1].number);checks++;assert.equal(finals[0].status,'final');checks++;
-await call('trips/'+d.id,'PATCH',{data:trip('dalam_mobil_dinas'),revision:d.revision},409);
-await call('employees/'+e.id,'PATCH',{...e,name:'Pegawai Uji Diubah',bankAccount:'00999999'});const locked=await call('trips/'+d.id);assert.equal(locked.data.participants[0].employee.bankAccount,'00123456789');checks++;
-await call(`trips/${d.id}/cancel`,'POST',{reason:'Pengujian pembatalan lokal'});await call('trips/'+d.id,'DELETE',undefined,409);
-const next=await call(`trips/${created[1].id}/finalize`,'POST',{revision:created[1].revision});assert.equal(Number(next.number.split('/')[0]),Number(finals[0].number.split('/')[0])+1);checks++;
-await call('trips/'+created[2].id,'PATCH',{data:trip('luar_provinsi'),revision:0},409);
-const after=await call('bootstrap');assert.ok(after.trips.some(t=>t.id===d.id&&t.status==='cancelled'));checks++;
-console.log(`${checks} pemeriksaan API lulus: autentikasi, penyimpanan tiga jenis, finalisasi bersamaan idempoten, nomor urut, penguncian, pembatalan, konflik revisi.`);
+const base='http://127.0.0.1:5173/api/';let checks=0;async function call(path,method='GET',body,status=200,auth=true){const r=await fetch(base+path,{method,headers:{...(auth?{cookie:'__sites_local_auth=1'}:{}),...(method==='GET'?{}:{'content-type':'application/json',origin:'http://127.0.0.1:5173'})},body:body===undefined?undefined:JSON.stringify(body)});const data=await r.json();assert.equal(r.status,status,JSON.stringify(data));checks++;return data;}
+await call('bootstrap','GET',undefined,401,false);const boot=await call('bootstrap');if(!boot.settings)await call('setup','POST',{company:'BANK KALSEL',issueCity:'Banjarmasin',signerName:'Penandatangan Uji',validFrom:'2026-01-01',lastNumber:0});
+const e=await call('employees','POST',{employeeNo:'T'+Date.now().toString().slice(-5),name:'Pegawai Uji V2',position:'Kepala Seksi',unit:'Unit Uji',criterion:3,creditName:'Penerima Master',bankAccount:'00123456789',active:1});const o=await call('offices','POST',{name:'Unit Uji V2',address:'Banjarmasin, Kalimantan Selatan',lat:-3.32,lng:114.59});
+const trip=scenario=>({costVersion:2,scenario,purpose:'umum',issueDate:'2026-10-29',issueCity:'Banjarmasin',originOfficeId:o.id,origin:'Unit Uji',destination:'Banjarbaru',reason:'Pengujian sistem',departureDate:'2026-10-29',returnDate:'2026-10-31',paidDays:3,nights:2,dayReason:'',transport:'Mobil',participants:[{employeeId:e.id,intercity:0,adjustmentReason:''}],note:'DATA UJI LOKAL'});
+await call('trips','POST',{data:trip('dalam_mobil_dinas')},400);const dp=await call('trips','POST',{data:trip('dalam_provinsi')});assert.equal(dp.total,1500000);checks++;
+const d=trip('luar_provinsi');d.participants[0]={...d.participants[0],allowanceOverride:1400000,cityTaxiOverride:200000,airportOverride:500000,creditNameOverride:'Penerima Khusus',bankAccountOverride:'00000999'};const lp=await call('trips','POST',{data:d});assert.equal(lp.total,2100000);checks++;
+const finals=await Promise.all([call(`trips/${lp.id}/finalize`,'POST',{revision:lp.revision}),call(`trips/${lp.id}/finalize`,'POST',{revision:lp.revision})]);assert.equal(finals[0].number,finals[1].number);checks++;assert.equal(finals[0].data.participants[0].employee.bankAccount,'00000999');checks++;assert.equal(finals[0].data.participants[0].employee.creditName,'Penerima Khusus');checks++;assert.equal(finals[0].data.costVersion,2);checks++;
+await call('trips/'+lp.id,'PATCH',{data:d,revision:lp.revision},409);const unchanged=await call('bootstrap');assert.equal(unchanged.employees.find(x=>x.id===e.id).bankAccount,'00123456789');checks++;
+await call('employees/'+e.id,'PATCH',{...e,bankAccount:'00999999'});const locked=await call('trips/'+lp.id);assert.equal(locked.data.participants[0].employee.bankAccount,'00000999');checks++;
+await call(`trips/${lp.id}/cancel`,'POST',{reason:'Pengujian pembatalan lokal'});await call('trips/'+lp.id,'DELETE',undefined,409);
+const next=await call(`trips/${dp.id}/finalize`,'POST',{revision:dp.revision});assert.equal(Number(next.number.split('/')[0]),Number(finals[0].number.split('/')[0])+1);checks++;
+d.participants[0].allowanceOverride=-1;await call('trips','POST',{data:d},400);d.participants[0].allowanceOverride='salah';await call('trips','POST',{data:d},400);
+await call('maps/route?from=181,0&to=114,-3','GET',undefined,400);await call('maps/search?q=a','GET',undefined,400);await call('maps/search?q=Banjarbaru','GET',undefined,401,false);await call('settings','PATCH',{...boot.settings,mapRouteUrl:'http://127.0.0.1'},400);
+console.log(`${checks} pemeriksaan API v2 lulus: otorisasi, dua jenis, override per orang, rekening, finalisasi, nomor urut, pembatalan, dan validasi peta.`);
