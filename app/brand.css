@@ -27,6 +27,9 @@ input:focus, select:focus, textarea:focus { border-color: var(--brand-blue); box
 button:focus-visible, a:focus-visible { outline-color: var(--brand-blue); }
 input:disabled, select:disabled, textarea:disabled { background: var(--canvas); color: var(--muted); }
 ::selection { background: var(--brand-blue); color: var(--surface); }
+.field .rupiah-input { display: block; position: relative; margin: 0; font-size: inherit; }
+.rupiah-input .rupiah-prefix { position: absolute; top: 50%; left: 12px; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+.rupiah-input input { padding-left: 39px; font-variant-numeric: tabular-nums; }
 
 .sidebar { background: var(--surface); color: var(--muted); border-right: 1px solid var(--line); }
 .brand { color: var(--brand-blue); margin-top: 29px; margin-bottom: 31px; }

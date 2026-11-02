@@ -1,11 +1,11 @@
 'use client';
 import {RotateCcw,X} from 'lucide-react';
-import NumberInput from '../components/number-input';
+import RupiahInput from '../components/rupiah-input';
 import {money,POSITION_CHOICES,GROUPS,positionCriterion,type Participant,type Employee,type Scenario,type Purpose} from '../src/lib/domain';
 
 function Amount({label,automatic,value,onChange,help}:{label:string;automatic:number;value?:number|null;onChange:(v:number|null)=>void;help:string}){
  return <label className="field amount-field"><span>{label}<em className={value!=null?'override-badge':'auto-badge'}>{value!=null?'Diubah HC':'Otomatis'}</em></span>
-  <NumberInput min={0} step={1} value={value??automatic} onValueChange={onChange}/><small>{help}</small>
+  <RupiahInput value={value??automatic} onValueChange={onChange}/><small>{help}</small>
   {value!=null&&<button type="button" className="text-button" onClick={()=>onChange(null)}><RotateCcw size={12}/>Gunakan nilai otomatis {money(automatic)}</button>}
  </label>;
 }

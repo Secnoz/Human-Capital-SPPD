@@ -23,6 +23,7 @@ Atur `BETTER_AUTH_SECRET` dan `SPPD_ADMIN_PASSWORD_HASH` sebagai secrets runtime
 
 ## Revisi aktif v3 (2 November 2026)
 
+- Kolom nominal biaya peserta dan tarif menampilkan awalan **Rp** dan pemisah ribuan saat diketik, misalnya **Rp 1.500.000**. Bisa dikosongkan, diisi 0, atau ditempel dari nominal berformat Rupiah; nilai perhitungan tetap angka Rupiah bulat.
 - Taksi dalam kota otomatis = tarif kota × **hari dibayar**, untuk kedua jenis perjalanan. Pilihan taksi dalam provinsi tetap opsional. Taksi bandara tetap satu kali.
 - Hari dibayar dapat diedit. Malam otomatis = `maksimum(hari dibayar - 1, 0)`, sesuai konfirmasi pengguna. Perbedaan dengan durasi kalender tetap memerlukan alasan. Input angka bisa dikosongkan sementara saat mengetik tanpa memunculkan kembali angka 0.
 - Transport antar kota otomatis mengambil nominal wilayah I–VI dari hasil jarak **sekali jalan** atau keputusan wilayah HC. Nominal otomatis sama dengan nilai referensi wilayah pada master dan tidak dikalikan hari. HC tetap dapat mengganti total per peserta, termasuk 0. Jika lokasi berubah, jarak/wilayah sebelumnya dihapus. Tepat 100 km memerlukan pilihan wilayah V atau VI. Bila jarak/wilayah belum tersedia, finalisasi memerlukan isian manual, termasuk 0 bila tidak dibayar.
