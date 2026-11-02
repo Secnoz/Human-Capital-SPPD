@@ -27,11 +27,11 @@ Atur `BETTER_AUTH_SECRET` dan `SPPD_ADMIN_PASSWORD_HASH` sebagai secrets runtime
 - Taksi dalam kota otomatis = tarif kota × **hari dibayar**, untuk kedua jenis perjalanan. Pilihan taksi dalam provinsi tetap opsional. Taksi bandara tetap satu kali.
 - Hari dibayar dapat diedit. Malam otomatis = `maksimum(hari dibayar - 1, 0)`, sesuai konfirmasi pengguna. Perbedaan dengan durasi kalender tetap memerlukan alasan. Input angka bisa dikosongkan sementara saat mengetik tanpa memunculkan kembali angka 0.
 - Transport antar kota otomatis mengambil nominal wilayah I–VI dari hasil jarak **sekali jalan** atau keputusan wilayah HC. Nominal otomatis sama dengan nilai referensi wilayah pada master dan tidak dikalikan hari. HC tetap dapat mengganti total per peserta, termasuk 0. Jika lokasi berubah, jarak/wilayah sebelumnya dihapus. Tepat 100 km memerlukan pilihan wilayah V atau VI. Bila jarak/wilayah belum tersedia, finalisasi memerlukan isian manual, termasuk 0 bila tidak dibayar.
-- **Jabatan Saat Ini** terisi dari master dan dapat memakai Plt./Pgs. Jabatan yang dikenal dipetakan ke kriteria yang pasti; jabatan tidak dikenal/ambigu memerlukan pilihan dasar tarif. Perubahan jabatan mengembalikan uang saku dan taksi ke tarif otomatis. Master pegawai tetap utuh; snapshot final menyimpan jabatan dan tarif yang digunakan.
+- Jabatan dan kriteria tarif peserta mengikuti master pegawai. Penyesuaian Plt./Pgs. ditunda sesuai permintaan pengguna sampai alurnya diberikan. Jabatan pada form hanya dapat dibaca. Draf dengan penyesuaian jabatan lama harus dibuka dan disimpan ulang; dokumen yang sudah final tetap memakai snapshot semula.
 - **Catatan 1** dan **Catatan 2** masing-masing maksimal 300 karakter dan dicetak pada kedua lembar. Catatan kosong tidak dicetak. Catatan internal HC tetap terpisah. Teks dibungkus pada area kosong yang telah diperiksa; bila tidak muat, cetak/finalisasi dari UI meminta catatan diringkas.
 - Dokumen final versi lama memakai snapshot lama. Draf lama harus dibuka dan disimpan ulang sebelum finalisasi, sehingga memakai aturan v3. Tidak ada perubahan skema database untuk data perjalanan karena disimpan sebagai JSON.
 
-Validasi: `scripts/verify-v3.mjs`, `scripts/verify-api-v3.mjs`, serta regresi aturan v2/legacy. Halaman `/qa-print` lokal memeriksa seluruh 8 template, termasuk 6 template aktif dengan dua catatan dan jabatan Plt.
+Validasi: `scripts/verify-v3.mjs`, `scripts/verify-api-v3.mjs`, serta regresi aturan v2/legacy. Halaman `/qa-print` lokal memeriksa seluruh 8 template, termasuk 6 template aktif dengan dua catatan.
 
 ## Arsip perhitungan v2 (29 Oktober 2026)
 

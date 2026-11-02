@@ -22,13 +22,7 @@ export function terbilang(n:number):string{if(!Number.isSafeInteger(n)||n<0||n>=
 export function suggestRegion(m:number){if(!Number.isFinite(m)||m<=0)return null;if(m===100000)return{region:'Perlu penetapan HC',cap:null};if(m<=100000)return{region:'VI',cap:300000};if(m<=150000)return{region:'V',cap:350000};if(m<=250000)return{region:'IV',cap:400000};if(m<=300000)return{region:'III',cap:500000};if(m<=350000)return{region:'II',cap:600000};return{region:'I',cap:700000};}
 export const COST_VERSION=3;
 export const PRINT_NOTE_LIMIT=300;
-export const POSITION_CHOICES=source.scenarios.dalam_provinsi.tariff_groups.flatMap(g=>g.aliases.map(title=>({title,criterion:g.id})));
-export function positionCriterion(title:string){
- const normalized=title.trim().replace(/^(?:plt|pgs)(?:\.\s*|\s+)/i,'').replace(/\s+/g,' ').toLowerCase();
- const matches=POSITION_CHOICES.filter(p=>normalized===p.title.toLowerCase()||normalized.startsWith(p.title.toLowerCase()+' '));
- const longest=Math.max(0,...matches.map(p=>p.title.length)),groups=new Set(matches.filter(p=>p.title.length===longest).map(p=>p.criterion));
- return groups.size===1?[...groups][0]:null;
-}
+export const hasPositionAdjustment=(d:Pick<TripData,'participants'>)=>d.participants.some(p=>p.positionOverride!=null||p.positionCriterionOverride!=null);
 export function nightsFromDays(days:number){return Number.isInteger(days)&&days>0?days-1:0;}
 export const REGION_AMOUNTS:Record<string,number>={I:700000,II:600000,III:500000,IV:400000,V:350000,VI:300000};
 export function intercityReference(d:TripData){
@@ -72,7 +66,7 @@ export function seedTariffs(validFrom:string,includeLegacy=false):Tariff[]{retur
 export function normalizeDraft(data:TripData):TripData{
  const legacy=data.costVersion!==2;
  const byDistance=data.manualDistanceKm!=null?suggestRegion(data.manualDistanceKm*1000):null;
- return{...data,costVersion:COST_VERSION,nights:nightsFromDays(data.paidDays),region:byDistance?.cap!=null?byDistance.region:data.region,note1:data.note1||'',note2:data.note2||'',scenario:data.scenario==='dalam_mobil_dinas'?'dalam_provinsi':data.scenario,participants:data.participants.map(p=>({employeeId:p.employeeId,intercity:0,intercityOverride:data.costVersion===COST_VERSION?p.intercityOverride:p.intercity||null,positionOverride:p.positionOverride,positionCriterionOverride:p.positionCriterionOverride,code:p.code,adjustmentReason:p.adjustmentReason||'',domesticTaxiEnabled:legacy&&data.costVersion!==COST_VERSION?false:!!p.domesticTaxiEnabled,allowanceOverride:legacy&&data.costVersion!==COST_VERSION?null:p.allowanceOverride,cityTaxiOverride:legacy&&data.costVersion!==COST_VERSION?null:p.cityTaxiOverride,airportOverride:legacy&&data.costVersion!==COST_VERSION?null:p.airportOverride,creditNameOverride:p.creditNameOverride,bankAccountOverride:p.bankAccountOverride}))};
+ return{...data,costVersion:COST_VERSION,nights:nightsFromDays(data.paidDays),region:byDistance?.cap!=null?byDistance.region:data.region,note1:data.note1||'',note2:data.note2||'',scenario:data.scenario==='dalam_mobil_dinas'?'dalam_provinsi':data.scenario,participants:data.participants.map(p=>({employeeId:p.employeeId,intercity:0,intercityOverride:data.costVersion===COST_VERSION?p.intercityOverride:p.intercity||null,code:p.code,adjustmentReason:p.adjustmentReason||'',domesticTaxiEnabled:legacy&&data.costVersion!==COST_VERSION?false:!!p.domesticTaxiEnabled,allowanceOverride:legacy&&data.costVersion!==COST_VERSION?null:p.allowanceOverride,cityTaxiOverride:legacy&&data.costVersion!==COST_VERSION?null:p.cityTaxiOverride,airportOverride:legacy&&data.costVersion!==COST_VERSION?null:p.airportOverride,creditNameOverride:p.creditNameOverride,bankAccountOverride:p.bankAccountOverride}))};
 }
 
 // Version 2 uses editable per-person totals. The legacy calculator is retained
@@ -96,11 +90,9 @@ export function calculateV2(d:TripData,employees:Employee[],tariffs:Tariff[],str
 export function calculate(d:TripData,employees:Employee[],tariffs:Tariff[],strict=false){
  if(d.costVersion!==COST_VERSION)return calculateV2(d,employees,tariffs,strict);
  const errors:string[]=[];
+ if(strict&&hasPositionAdjustment(d))errors.push('Penyesuaian jabatan belum digunakan. Buka dan simpan ulang draf untuk mengikuti master pegawai.');
  const effective=employees.map(e=>{const p=d.participants.find(p=>p.employeeId===e.id);if(!p)return{...e};
-  const changed=p.positionOverride!=null,title=changed?p.positionOverride!.trim():e.position,derived=changed?positionCriterion(title):null,criterion=changed?(derived??p.positionCriterionOverride??NaN):e.criterion;
-  if(changed&&!title)errors.push(`Isi Jabatan Saat Ini untuk ${e.name}.`);
-  if(changed&&derived!=null&&p.positionCriterionOverride!=null&&p.positionCriterionOverride!==derived)errors.push(`Kriteria jabatan ${e.name} tidak sesuai jabatan yang dipilih.`);
-  return{...e,position:title,criterion,creditName:p.creditNameOverride??e.creditName,bankAccount:p.bankAccountOverride??e.bankAccount};
+  return{...e,creditName:p.creditNameOverride??e.creditName,bankAccount:p.bankAccountOverride??e.bankAccount};
  });
  const ref=intercityReference(d);
  const prepared={...d,nights:nightsFromDays(d.paidDays),participants:d.participants.map(p=>({...p,intercity:d.scenario==='dalam_provinsi'?(p.intercityOverride??ref?.amount??0):0}))};

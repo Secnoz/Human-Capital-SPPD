@@ -1,7 +1,7 @@
 'use client';
 import {RotateCcw,X} from 'lucide-react';
 import RupiahInput from '../components/rupiah-input';
-import {money,POSITION_CHOICES,GROUPS,positionCriterion,type Participant,type Employee,type Scenario,type Purpose} from '../src/lib/domain';
+import {money,type Participant,type Employee,type Scenario,type Purpose} from '../src/lib/domain';
 
 function Amount({label,automatic,value,onChange,help}:{label:string;automatic:number;value?:number|null;onChange:(v:number|null)=>void;help:string}){
  return <label className="field amount-field"><span>{label}<em className={value!=null?'override-badge':'auto-badge'}>{value!=null?'Diubah HC':'Otomatis'}</em></span>
@@ -11,15 +11,11 @@ function Amount({label,automatic,value,onChange,help}:{label:string;automatic:nu
 }
 export default function ParticipantForm({participant:p,computed:c,employee:e,index,scenario,purpose,paidDays,transportRegion,onChange,onRemove}:{participant:Participant;computed:Participant;employee?:Employee;index:number;scenario:Scenario;purpose:Purpose;paidDays:number;transportRegion?:string;onChange:(p:Partial<Participant>)=>void;onRemove:()=>void}){
  const automatic=c.automatic||{allowance:0,cityTaxi:0,airport:0,intercity:0},special=['65796','65800','65974'].includes(p.code||'');
- const title=p.positionOverride??e?.position??'',known=p.positionOverride!=null?positionCriterion(title):e?.criterion;
- const choices=[...new Set([e?.position||'',...POSITION_CHOICES.flatMap(p=>[p.title,'Plt. '+p.title,'Pgs. '+p.title])])].filter(Boolean);
- const resetCosts={allowanceOverride:null,cityTaxiOverride:null,airportOverride:null};
+ const title=e?.position??'';
  return <article className="participant">
   <div className="participant-heading"><span className="participant-number">{index+1}</span><div><b>{e?.name||'Pegawai tidak tersedia'}</b><small>{e?.employeeNo} · {title||'Jabatan belum diisi'} · Kriteria {Number.isFinite(c.employee?.criterion)?c.employee?.criterion:'—'}</small></div><button type="button" className="icon-button danger-text" aria-label={'Hapus peserta '+(e?.name||'')} onClick={onRemove}><X size={16}/></button></div>
   <div className="form-grid participant-fields">
-   <label className="field wide"><span>Jabatan Saat Ini</span><input aria-label={'Jabatan Saat Ini peserta '+(index+1)} list={'jabatan-peserta-'+index} maxLength={150} value={title} onChange={event=>onChange({...resetCosts,positionOverride:event.currentTarget.value,positionCriterionOverride:positionCriterion(event.currentTarget.value)})}/><datalist id={'jabatan-peserta-'+index}>{choices.map(choice=><option key={choice} value={choice}/>)}</datalist><small>Master: {e?.position} · kriteria {e?.criterion}. Pilih atau ketik jabatan, misalnya Plt. Kepala Divisi atau Pgs. Kepala Cabang. Perubahan mengembalikan uang saku dan taksi ke tarif otomatis.</small></label>
-   {p.positionOverride!=null&&known==null&&<label className="field wide"><span>Dasar tarif Jabatan Saat Ini</span><select aria-label={'Dasar tarif jabatan peserta '+(index+1)} value={p.positionCriterionOverride??''} onChange={event=>onChange({...resetCosts,positionCriterionOverride:event.currentTarget.value===''?null:Number(event.currentTarget.value)})}><option value="">Pilih kriteria untuk jabatan ini</option>{GROUPS.map(group=><option key={group.id} value={group.id}>{group.id} · {group.label}</option>)}</select><small>Jabatan ini belum dapat dipetakan secara pasti. Tentukan dasar tarif sebelum finalisasi.</small></label>}
-   {p.positionOverride!=null&&<div className="wide"><button type="button" className="text-button" onClick={()=>onChange({...resetCosts,positionOverride:null,positionCriterionOverride:null})}><RotateCcw size={12}/>Gunakan jabatan master</button></div>}
+   <label className="field wide"><span>Jabatan</span><input aria-label={'Jabatan peserta '+(index+1)} value={title} readOnly/><small>Jabatan dan kriteria tarif mengikuti master pegawai.</small></label>
    <Amount label="Uang saku (Rp/orang)" value={p.allowanceOverride} automatic={automatic.allowance} onChange={v=>onChange({allowanceOverride:v})} help={`Ketentuan ${money(c.rate?.daily||0)} × ${paidDays} hari dibayar. Total dapat diubah untuk SPPD ini.`}/>
    {scenario==='luar_provinsi'?<>
     <Amount label="Taksi bandara (Rp/orang)" value={p.airportOverride} automatic={automatic.airport} onChange={v=>onChange({airportOverride:v})} help="Total untuk perjalanan ini; dihitung satu kali."/>
