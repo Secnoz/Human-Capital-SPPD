@@ -21,7 +21,18 @@ Better Auth 1.7.14 menyimpan akun dan sesi di D1. Kata sandi menggunakan scrypt 
 
 Atur `BETTER_AUTH_SECRET` dan `SPPD_ADMIN_PASSWORD_HASH` sebagai secrets runtime Sites. Hash bootstrap harus menggunakan format scrypt yang sama dengan `src/lib/password.ts`. Worker menambahkan admin sekali dengan `INSERT OR IGNORE`; pembaruan berikutnya tidak mengembalikan kata sandi awal. Jangan menyimpan kata sandi atau secret di source, GitHub, atau bundle browser. Akun ChatGPT dan daftar anggota lama tetap tersimpan, tetapi belum bisa memakai login baru sampai admin menetapkan kata sandi untuknya.
 
-## Perhitungan v2 (29 Oktober 2026)
+## Revisi aktif v3 (2 November 2026)
+
+- Taksi dalam kota otomatis = tarif kota × **hari dibayar**, untuk kedua jenis perjalanan. Pilihan taksi dalam provinsi tetap opsional. Taksi bandara tetap satu kali.
+- Hari dibayar dapat diedit. Malam otomatis = `maksimum(hari dibayar - 1, 0)`, sesuai konfirmasi pengguna. Perbedaan dengan durasi kalender tetap memerlukan alasan. Input angka bisa dikosongkan sementara saat mengetik tanpa memunculkan kembali angka 0.
+- Transport antar kota otomatis mengambil nominal wilayah I–VI dari hasil jarak **sekali jalan** atau keputusan wilayah HC. Nominal otomatis sama dengan nilai referensi wilayah pada master dan tidak dikalikan hari. HC tetap dapat mengganti total per peserta, termasuk 0. Jika lokasi berubah, jarak/wilayah sebelumnya dihapus. Tepat 100 km memerlukan pilihan wilayah V atau VI. Bila jarak/wilayah belum tersedia, finalisasi memerlukan isian manual, termasuk 0 bila tidak dibayar.
+- **Jabatan Saat Ini** terisi dari master dan dapat memakai Plt./Pgs. Jabatan yang dikenal dipetakan ke kriteria yang pasti; jabatan tidak dikenal/ambigu memerlukan pilihan dasar tarif. Perubahan jabatan mengembalikan uang saku dan taksi ke tarif otomatis. Master pegawai tetap utuh; snapshot final menyimpan jabatan dan tarif yang digunakan.
+- **Catatan 1** dan **Catatan 2** masing-masing maksimal 300 karakter dan dicetak pada kedua lembar. Catatan kosong tidak dicetak. Catatan internal HC tetap terpisah. Teks dibungkus pada area kosong yang telah diperiksa; bila tidak muat, cetak/finalisasi dari UI meminta catatan diringkas.
+- Dokumen final versi lama memakai snapshot lama. Draf lama harus dibuka dan disimpan ulang sebelum finalisasi, sehingga memakai aturan v3. Tidak ada perubahan skema database untuk data perjalanan karena disimpan sebagai JSON.
+
+Validasi: `scripts/verify-v3.mjs`, `scripts/verify-api-v3.mjs`, serta regresi aturan v2/legacy. Halaman `/qa-print` lokal memeriksa seluruh 8 template, termasuk 6 template aktif dengan dua catatan dan jabatan Plt.
+
+## Arsip perhitungan v2 (29 Oktober 2026)
 
 Hanya dua jenis tersedia pada pembuatan baru:
 
@@ -45,9 +56,9 @@ Peta dalam provinsi memakai [mapcn](https://github.com/AnmolSaini16/mapcn) / Map
 1. Pilih unit kerja asal. Jika koordinatnya tersedia, titik A otomatis terpasang.
 2. Jika koordinat belum ada, pilih tab **Titik unit asal**, cari alamat atau pasang pin tepat pada unit tersebut.
 3. Cari tujuan lewat tombol **Cari lokasi**, atau klik/geser pin B. Tidak ada pencarian otomatis per ketikan.
-4. Tekan **Hitung rute sekali jalan**. Hasil jarak, durasi, dan wilayah referensi dapat diterima sebagai penetapan HC.
+4. Tekan **Hitung rute sekali jalan**. Hasil jarak dan wilayah otomatis mengisi referensi transport antar kota setiap peserta. Periksa hasil rute sebelum finalisasi.
 
-Jarak adalah rute kendaraan **sekali jalan dari unit kerja asal**. Maksimum wilayah tidak otomatis menjadi nominal pembayaran. Tepat 100 km masih memerlukan keputusan HC. Peta tidak dicetak pada dokumen resmi. Untuk luar provinsi, kedua taksi tetap per perjalanan dan form tidak menampilkan peta.
+Jarak adalah rute kendaraan **sekali jalan dari unit kerja asal**. Nominal otomatis mengikuti referensi wilayah; HC dapat mengubah total per peserta. Tepat 100 km masih memerlukan keputusan HC. Peta tidak dicetak pada dokumen resmi. Untuk luar provinsi, taksi kota dikalikan hari dibayar, taksi bandara satu kali, dan form tidak menampilkan peta.
 
 Admin dapat mengganti URL tile, server OSRM, dan server Photon di Pengaturan tanpa mengubah kode. Default adalah layanan publik yang berbatas, tanpa jaminan ketersediaan. API pencarian/rute memerlukan login HC; permintaan keluar dibatasi per aplikasi dan hasil dicache di R2 selama 6 jam. Hanya koordinat/alamat tempat yang diminta, tanpa nama pegawai, rekening, atau nominal biaya. Endpoint wajib HTTPS publik. Peta mengikuti cache browser dan menampilkan atribusi OpenStreetMap secara terlihat. Tidak ada fitur unduhan/prefetch tile massal; kebijakan: https://operations.osmfoundation.org/policies/tiles/ .
 

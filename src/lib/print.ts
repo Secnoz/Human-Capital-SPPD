@@ -1,5 +1,5 @@
 import assets from '../data/print-templates.json';
-import { dateLabel,terbilang,type TripRecord,type Settings } from './domain';
+import { dateLabel,terbilang,COST_VERSION,type TripData,type TripRecord,type Settings } from './domain';
 
 const templates=assets.templates as unknown as Record<string,Template>;
 const styles=assets.styles as unknown as Record<string,Style>;
@@ -9,10 +9,31 @@ interface Cell{address:string;style:string;pageBoxPt:Box;textBoxPt?:Box;mergeAnc
 interface Template{id:string;page:{widthPt:number;heightPt:number};fontPrintSizesPt:Record<string,number>;fontScaleFallback:number;representativeSuffix?:string;participantSequenceSuffix?:string;cells:Cell[];borderRectsPt:(Box&{color:string})[]}
 export function templateIds(trip:TripRecord){const scenario=trip.data.scenario;return[scenario==='dalam_provinsi'?'sppd-dp':scenario==='luar_provinsi'?'sppd-lp':'sppd',scenario==='dalam_mobil_dinas'?'payment-md-general':`payment-${scenario==='dalam_provinsi'?'dp':'lp'}-${trip.data.purpose==='umum'?'general':'education'}`];}
 export function printValues(trip:TripRecord,settings:Settings,t:Template){
- const d=trip.data,n=d.nights?String(d.nights):'-',nomor='Nomor: '+(trip.number||'— DRAF');
+ const d=trip.data,n=d.costVersion===COST_VERSION?String(d.nights):d.nights?String(d.nights):'-',nomor='Nomor: '+(trip.number||'— DRAF');
  return{document:{number:nomor,authorizingRole:d.commander||settings.commander,originName:d.origin,destinationName:d.destination,purpose:d.reason,paidDays:d.paidDays,nightsDisplay:n,departureDateText:dateLabel(d.departureDate),returnDateText:dateLabel(d.returnDate),transportLabel:d.transport,paymentRepresentative:(d.participants[0]?.employee?.name||'')+(t.representativeSuffix||''),paymentReference:nomor+', '+dateLabel(d.issueDate),itineraryText:`${d.destination} ${d.paidDays} Hari / ${n} Malam,${t.id==='payment-md-general'?' ':''}${dateLabel(d.departureDate)} - ${dateLabel(d.returnDate)}`,issuePlaceDateText:`${d.issueCity}, ${dateLabel(d.issueDate)}`,signatureName:d.signerName||settings.signerName,signatureRole:d.signerPosition||settings.signerPosition,total:trip.total,totalInWords:terbilang(trip.total)},participants:d.participants.map((p,i)=>({name:p.employee?.name||'',employeeNumber:p.employee?.employeeNo||'',accountNumber:p.employee?.bankAccount||'',creditName:p.employee?.creditName||'',position:p.employee?.position||'',unit:p.employee?.unit||'',sequence:String(i+1)+(t.participantSequenceSuffix||''),separator:'/',pocket:p.allowance||0,dailyTaxiTotal:p.cityTaxi||0,airportTaxiTotal:p.airport||0,intercityTotal:p.intercity||0,budgetCode:p.code||'',total:p.total||0}))};
 }
 function resolve(root:unknown,path:string):unknown{return path.split('.').reduce((p,k)=>p!=null?(p as Record<string,unknown>)[k]:undefined,root);}
+export function printedNotes(data:Pick<TripData,'note1'|'note2'>){return([{label:'Catatan 1',text:data.note1||''},{label:'Catatan 2',text:data.note2||''}]).filter(n=>n.text.trim()).map(n=>({...n,text:n.text.trim()}));}
+export function printNotesArea(id:string):Box{
+ const t=templates[id];if(!t)throw new Error('Template tidak tersedia.');
+ if(id.startsWith('sppd'))return{x:44.55,y:710,width:t.page.widthPt-89.1,height:t.page.heightPt-764};
+ const signature=t.cells.find(c=>c.binding==='document.signatureName');
+ return{x:50.8,y:425,width:(signature?.pageBoxPt.x??518)-70.8,height:t.page.heightPt-479};
+}
+function renderNotes(ctx:CanvasRenderingContext2D,data:TripData,id:string,issues:string[]){
+ const notes=printedNotes(data);if(!notes.length)return[];
+ const box=printNotesArea(id),fontSize=8,lineHeight=10,bodyX=box.x+49,bodyWidth=box.width-49,layout:{label:string;lines:string[];y:number}[]=[];let top=box.y;
+ ctx.save();ctx.beginPath();ctx.rect(box.x,box.y,box.width,box.height);ctx.clip();ctx.fillStyle='#000';ctx.textAlign='left';ctx.textBaseline='alphabetic';
+ for(const note of notes){
+  ctx.font=`${fontSize}px Calibri, Arial, sans-serif`;const lines:string[]=[];
+  for(const paragraph of note.text.split(/\r?\n/)){let line='';for(const word of paragraph.split(/\s+/).filter(Boolean)){if(ctx.measureText(word).width>bodyWidth){if(line){lines.push(line);line='';}for(const character of word){if(ctx.measureText(line+character).width>bodyWidth){lines.push(line);line='';}line+=character;}}else if(line&&ctx.measureText(line+' '+word).width>bodyWidth){lines.push(line);line=word;}else line=line?line+' '+word:word;}lines.push(line);}
+  if(top+lines.length*lineHeight>box.y+box.height)issues.push(`${note.label} tidak muat pada ${id}. Ringkas catatan sebelum mencetak.`);
+  ctx.font=`bold ${fontSize}px Calibri, Arial, sans-serif`;ctx.fillText(note.label+':',box.x,top+fontSize);
+  ctx.font=`${fontSize}px Calibri, Arial, sans-serif`;lines.forEach((line,index)=>ctx.fillText(line,bodyX,top+fontSize+index*lineHeight));
+  layout.push({label:note.label,lines,y:top});top+=lines.length*lineHeight+6;
+ }
+ ctx.restore();return layout;
+}
 const moneyNumber=(n:number,format:string)=>n===0&&format.includes('*')?'-':new Intl.NumberFormat('id-ID',{minimumFractionDigits:format.includes('0.00')||format.includes('0,00')?2:0,maximumFractionDigits:format.includes('0.00')||format.includes('0,00')?2:0}).format(n);
 export async function renderDocument(trip:TripRecord,settings:Settings,id:string,scale=2.8){
  const template=templates[id];if(!template)throw new Error('Versi template dokumen tidak tersedia.');
@@ -40,8 +61,9 @@ export async function renderDocument(trip:TripRecord,settings:Settings,id:string
   ctx.save();ctx.beginPath();ctx.rect(box.x,box.y,box.width,box.height);ctx.clip();
   lines.forEach((line,i)=>{const measured=ctx.measureText(line).width,x=align==='right'?box.x+box.width-padding-measured:align==='center'?box.x+(box.width-measured)/2:box.x+padding,y=baseline+i*lineHeight;ctx.fillText(line,x,y);if(s.font.underline)ctx.fillRect(x,y+fontSize*.13,measured,Math.max(.4,fontSize*.05));});ctx.restore();
  }
+ const notes=renderNotes(ctx,trip.data,id,issues);
  if(trip.status!=='final'){ctx.save();ctx.translate(template.page.widthPt/2,template.page.heightPt/2);ctx.rotate(-Math.PI/7);ctx.font='bold 64px Arial';ctx.fillStyle=trip.status==='cancelled'?'rgba(180,35,35,.18)':'rgba(65,85,120,.13)';ctx.textAlign='center';ctx.fillText(trip.status==='cancelled'?'BATAL':'DRAF',0,0);ctx.restore();}
- return{canvas,widthPt:template.page.widthPt,heightPt:template.page.heightPt,issues};
+ return{canvas,widthPt:template.page.widthPt,heightPt:template.page.heightPt,issues,notes};
 }
 function concat(parts:Uint8Array[]){const out=new Uint8Array(parts.reduce((n,p)=>n+p.length,0));let at=0;for(const p of parts){out.set(p,at);at+=p.length;}return out;}
 // A4 PDF with high-resolution JPEG pages. Browser uses locally installed Office fonts.
