@@ -8,9 +8,10 @@ import { authUser,authSession,authAccount,authVerification,authRateLimit } from 
 import { hashPassword,verifyPassword } from './password';
 export function createAuth(){
  if(!env.BETTER_AUTH_SECRET)throw new Error('Pengaturan login belum tersedia.');
- const origin=import.meta.env.DEV?'http://127.0.0.1:5173':'https://sppd-human-capital-kalsel.sunsetape16.chatgpt.site';
+ const origin=import.meta.env.DEV?'http://127.0.0.1:5173':'https://sppd-human-capital-kalsel.anshari-3101.chatgpt.site';
  return betterAuth({
   appName:'SPPD Human Capital',baseURL:origin,secret:env.BETTER_AUTH_SECRET,
+  trustedOrigins:import.meta.env.DEV?[origin]:[origin,'https://sppd-human-capital-kalsel.sunsetape16.chatgpt.site'],
   database:drizzleAdapter(getDb(),{provider:'sqlite',schema:{user:authUser,session:authSession,account:authAccount,verification:authVerification,rateLimit:authRateLimit}}),
   emailAndPassword:{enabled:true,disableSignUp:true,minPasswordLength:10,maxPasswordLength:128,password:{hash:hashPassword,verify:verifyPassword}},
   session:{expiresIn:60*60*8,updateAge:60*60,cookieCache:{enabled:false}},
