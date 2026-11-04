@@ -19,6 +19,14 @@ for(const scenario of ['dalam_provinsi','luar_provinsi']){
 }
 for(const returnDate of ['', '2026-11-03','2027-11-08']){const draft=await call('trips','POST',{data:{...trip(),returnDate}});if(!returnDate||returnDate<'2026-11-04')eq(draft.data.paidDays,0);await call('trips/'+draft.id+'/finalize','POST',{revision:draft.revision},400);}
 const manual=await call('trips','POST',{data:{...trip(),participants:[{...trip().participants[0],allowanceOverride:123456,cityTaxiOverride:0,airportOverride:111}]}});eq(manual.total,123567);eq(manual.data.paidDays,5);
+
+const manualDays=await call('trips','POST',{data:{...trip(),paidDaysOverride:3,paidDays:999,nights:999}});eq(manualDays.data.paidDays,3);eq(manualDays.data.nights,2);eq(manualDays.data.paidDaysOverride,3);
+const newDates=await call('trips/'+manualDays.id,'PATCH',{revision:manualDays.revision,data:{...trip(),returnDate:'2026-11-10',paidDaysOverride:3}});eq(newDates.data.paidDays,3);eq(newDates.data.nights,2);
+const autoAgain=await call('trips/'+manualDays.id,'PATCH',{revision:newDates.revision,data:{...trip(),returnDate:'2026-11-10',paidDaysOverride:null}});eq(autoAgain.data.paidDays,7);eq(autoAgain.data.nights,6);
+for(const paidDaysOverride of [-1,1.5,367,'abc'])await call('trips','POST',{data:{...trip(),paidDaysOverride}},400);
+const emptyDays=await call('trips','POST',{data:{...trip(),paidDaysOverride:0}});eq(emptyDays.data.paidDays,0);eq(emptyDays.data.nights,0);await call('trips/'+emptyDays.id+'/finalize','POST',{revision:emptyDays.revision},400);
+const fixedDays=await call('trips/'+manualDays.id,'PATCH',{revision:autoAgain.revision,data:{...trip(),returnDate:'2026-11-10',paidDaysOverride:3}});const finalManual=await call('trips/'+fixedDays.id+'/finalize','POST',{revision:fixedDays.revision});eq(finalManual.data.paidDays,3);eq(finalManual.data.nights,2);eq(finalManual.data.paidDaysOverride,3);
+const manualRate=before.tariffs.find(rate=>rate.scenario==='luar_provinsi'&&rate.criterion===employee.criterion&&rate.validFrom<='2026-11-04'&&(!rate.validUntil||rate.validUntil>='2026-11-04'));eq(finalManual.total,manualRate.daily*3+manualRate.cityTaxi*3+manualRate.airport);
 const after=await call('bootstrap');eq(after.members,before.members);eq(after.employees,before.employees);
 for(const historic of before.trips.filter(trip=>trip.status==='final')){const unchanged=after.trips.find(trip=>trip.id===historic.id);eq(unchanged,historic);}
 eq((await call('approval/preparation')).enabled,false);

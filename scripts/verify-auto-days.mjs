@@ -25,4 +25,15 @@ const old={...historic,participants:[{...historic.participants[0],intercityOverr
 eq(opened.costVersion,COST_VERSION);eq(opened.paidDays,5);eq(opened.nights,4);eq(opened.participants[0].allowanceOverride,123456);eq(opened.participants[0].cityTaxiOverride,0);eq(opened.participants[0].intercityOverride,0);eq(opened.participants[0].domesticTaxiEnabled,true);eq(opened.participants[0].criterionOverride,7);eq(opened.participants[0].bankAccountOverride,'000099');eq(old,original);
 for(const version of [3,COST_VERSION]){const trip={number:'CONTOH',data:{...short,costVersion:version},total:0};eq(printValues(trip,{},{}).document.nightsDisplay,'0');}
 const printTrip={number:'CONTOH',data, total:3975000};eq(printValues(printTrip,{},{}).document.paidDays,5);eq(printValues(printTrip,{},{}).document.nightsDisplay,'4');eq(printValues(printTrip,{},{}).document.itineraryText.includes('5 Hari / 4 Malam'),true);
+
+const manual=patchTrip(data,{paidDaysOverride:3});eq(manual.paidDays,3);eq(manual.nights,2);eq(calculate(manual,[employee],tariffs,true).errors,[]);eq(calculate(manual,[employee],tariffs).total,2625000);
+const manualDate=patchTrip(manual,{returnDate:'2026-11-10'});eq(manualDate.paidDays,3);eq(manualDate.nights,2);eq(manualDate.paidDaysOverride,3);
+const reopened=normalizeDraft(manualDate);eq(reopened.paidDays,3);eq(reopened.paidDaysOverride,3);eq(reopened.nights,2);
+const reset=patchTrip(manualDate,{paidDaysOverride:null});eq(reset.paidDays,7);eq(reset.nights,6);eq(reset.paidDaysOverride,null);eq(calculate(reset,[employee],tariffs).total,5325000);
+eq(calculate(patchTrip(data,{paidDaysOverride:0}),[employee],tariffs,true).errors.some(error=>error.includes('1–366')),true);
+for(const scenario of ['dalam_provinsi','luar_provinsi'])for(let criterion=1;criterion<=10;criterion++)for(const days of [1,3,7]){
+ const selected=patchTrip({...base,scenario,participants:[{...base.participants[0],domesticTaxiEnabled:true,intercityOverride:0}]},{paidDaysOverride:days}),result=calculate(selected,[{...employee,criterion}],tariffs,true),rate=tariffs.find(rate=>rate.scenario===scenario&&rate.criterion===criterion);
+ eq(result.errors,[]);eq(selected.paidDays,days);eq(selected.nights,days-1);eq(result.participants[0].allowance,rate.daily*days);eq(result.participants[0].cityTaxi,rate.cityTaxi*days);eq(result.participants[0].airport,scenario==='luar_provinsi'?rate.airport:0);
+}
+const manualPrint=printValues({number:'UJI',data:manual,total:2625000},{},{});eq(manualPrint.document.paidDays,3);eq(manualPrint.document.nightsDisplay,'2');eq(manualPrint.document.itineraryText.includes('3 Hari / 2 Malam'),true);
 console.log(`${checks} pemeriksaan hari otomatis lulus: kalender inklusif, biaya, validasi, migrasi draf, arsip, dan nilai cetak.`);
