@@ -1,5 +1,6 @@
 'use client';
 import {useEffect,useId,useState} from 'react';
+import ApprovalRevisionPreview from './approval-revision-preview';
 import {APPROVAL_STEPS,emptyApprovalPreparation,type ApprovalPreparation} from '../src/lib/approval';
 
 export default function ApprovalPreparationPanel({members}:{members:{email:string;name:string;active:number}[]}){
@@ -12,6 +13,7 @@ export default function ApprovalPreparationPanel({members}:{members:{email:strin
   <div className="section-heading"><div><h2 id={id+'-title'}>Checker & persetujuan</h2><p>Rancangan alur pemeriksaan sebelum SPPD difinalkan.</p></div><span className="small-tag">Belum aktif</span></div>
   <div className="notice info"><span>Mode persiapan. Penyimpanan rancangan hanya mencatat calon petugas dan catatan alur. Proses SPPD saat ini tetap menggunakan finalisasi langsung.</span></div>
   <ol className="approval-flow">{APPROVAL_STEPS.map(step=><li key={step.id}><strong>{step.actor}</strong><span>{step.label}</span><p>{step.description}</p></li>)}</ol>
+  <ApprovalRevisionPreview/>
   {loading?<p role="status">Memuat rancangan…</p>:<form onSubmit={async event=>{event.preventDefault();setSaving(true);setError('');setNotice('');try{const response=await fetch('/api/approval/preparation',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify(draft)});const result=await response.json() as ApprovalPreparation&{error?:string};if(!response.ok)throw new Error(result.error||'Rancangan belum dapat disimpan.');setDraft(result);setNotice('Rancangan tersimpan. Checker dan approval tetap belum aktif.');}catch(error){setError((error as Error).message);}finally{setSaving(false);}}}>
    <div className="form-grid">
     <label className="field"><span>Jabatan checker</span><input readOnly value={draft.checkerPosition}/><small>Kepala bagian yang membawahi kompensasi dan manfaat.</small></label>

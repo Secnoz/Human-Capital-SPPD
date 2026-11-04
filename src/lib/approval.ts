@@ -6,8 +6,10 @@ export const APPROVAL_STEPS=[
  {id:'pending_approval',label:'Persetujuan',actor:'Approver',description:`${APPROVAL_POSITIONS.approver} meninjau hasil pemeriksaan untuk menyetujui atau mengembalikan dokumen.`},
  {id:'approved',label:'Siap finalisasi',actor:'Pembuat',description:'Menerbitkan dokumen sesuai revisi yang telah disetujui.'},
 ] as const;
-export type ApprovalState='draft'|'pending_check'|'pending_approval'|'approved'|'returned'|'rejected'|'final';
-export type ApprovalAction='submit'|'check'|'approve'|'return'|'reject'|'revise'|'finalize';
+export type ApprovalState='draft'|'pending_check'|'pending_approval'|'approved'|'returned'|'revising'|'rejected'|'final';
+export type ApprovalAction='submit'|'resubmit'|'check'|'approve'|'return'|'reject'|'revise'|'finalize';
+export const APPROVAL_STATE_LABELS:Record<ApprovalState,string>={draft:'Draf',pending_check:'Menunggu checker',pending_approval:'Menunggu approver',approved:'Disetujui',returned:'Perlu revisi',revising:'Sedang diperbaiki',rejected:'Ditolak',final:'Final'};
+export const REVISION_STEPS=['Menunggu checker','Perlu revisi','Diperbaiki pembuat','Diajukan ulang','Menunggu checker'] as const;
 export interface ApprovalPreparation{enabled:false;mode:'preparation';revision:number;checkerPosition:string;approverPosition:string;checkerEmail:string;approverEmail:string;notes:string;updatedAt:string|null;updatedBy:string|null}
 export const emptyApprovalPreparation=():ApprovalPreparation=>({enabled:false,mode:'preparation',revision:0,checkerPosition:APPROVAL_POSITIONS.checker,approverPosition:APPROVAL_POSITIONS.approver,checkerEmail:'',approverEmail:'',notes:'',updatedAt:null,updatedBy:null});
 
@@ -25,7 +27,7 @@ export function validateApprovalPreparation(raw:Record<string,unknown>,activeEma
  return{checkerEmail,approverEmail,notes,errors:[...new Set(errors)]};
 }
 
-export interface ApprovalReview{state:ApprovalState;makerEmail:string;checkerEmail:string;approverEmail:string;submittedRevision:number|null;checkedRevision:number|null;approvedRevision:number|null}
+export interface ApprovalReview{state:ApprovalState;makerEmail:string;checkerEmail:string;approverEmail:string;submittedRevision:number|null;checkedRevision:number|null;approvedRevision:number|null;returnedRevision?:number|null;returnReason?:string}
 export interface ApprovalEvent{action:ApprovalAction;actorEmail:string;from:ApprovalState;to:ApprovalState;tripRevision:number;comment:string;at:string}
 
 // This policy model is for preparation tests. Live mutations remain disabled.
@@ -39,8 +41,13 @@ export function planApprovalTransition(review:ApprovalReview,action:ApprovalActi
  const current=()=>{if(review.submittedRevision!==tripRevision)throw new Error('Dokumen berubah setelah diajukan. Ajukan ulang revisi terbaru.');};
  switch(action){
   case 'submit':
-   if(!is(review.makerEmail)||!['draft','returned'].includes(review.state))throw new Error('Hanya pembuat dapat mengajukan draf atau perbaikan.');
+   if(!is(review.makerEmail)||review.state!=='draft')throw new Error('Hanya pembuat dapat mengajukan draf awal. Gunakan pengajuan ulang untuk perbaikan.');
    next.state='pending_check';next.submittedRevision=tripRevision;next.checkedRevision=null;next.approvedRevision=null;break;
+  case 'resubmit':
+   if(!is(review.makerEmail)||!['returned','revising'].includes(review.state))throw new Error('Hanya pembuat dapat mengajukan ulang dokumen yang dikembalikan.');
+   if(review.returnedRevision==null||tripRevision<=review.returnedRevision)throw new Error('Simpan perbaikan pada revisi baru sebelum mengajukan ulang.');
+   if(!note)throw new Error('Isi catatan perbaikan sebelum mengajukan ulang.');
+   next.state='pending_check';next.submittedRevision=tripRevision;next.checkedRevision=null;next.approvedRevision=null;next.returnedRevision=null;next.returnReason='';break;
   case 'check':
    if(!is(review.checkerEmail)||review.state!=='pending_check')throw new Error('Dokumen belum menunggu pemeriksaan oleh checker ini.');
    current();next.state='pending_approval';next.checkedRevision=tripRevision;break;
@@ -49,10 +56,11 @@ export function planApprovalTransition(review:ApprovalReview,action:ApprovalActi
    current();if(review.checkedRevision!==tripRevision)throw new Error('Revisi ini belum diperiksa.');next.state='approved';next.approvedRevision=tripRevision;break;
   case 'return':case 'reject':
    if(!(review.state==='pending_check'&&is(review.checkerEmail)||review.state==='pending_approval'&&is(review.approverEmail)))throw new Error('Tindakan hanya tersedia bagi pemeriksa pada tahap ini.');
-   current();if(!note)throw new Error('Isi alasan pengembalian atau penolakan.');next.state=action==='return'?'returned':'rejected';next.checkedRevision=null;next.approvedRevision=null;break;
+   current();if(!note)throw new Error('Isi alasan pengembalian atau penolakan.');next.state=action==='return'?'returned':'rejected';next.checkedRevision=null;next.approvedRevision=null;if(action==='return'){next.returnedRevision=tripRevision;next.returnReason=note;}break;
   case 'revise':
-   if(!is(review.makerEmail)||!['draft','returned','approved'].includes(review.state))throw new Error('Kembalikan dokumen ke pembuat sebelum mengubah isian.');
-   next.state='draft';next.submittedRevision=null;next.checkedRevision=null;next.approvedRevision=null;break;
+   if(!is(review.makerEmail)||!['draft','returned','revising','approved'].includes(review.state))throw new Error('Kembalikan dokumen ke pembuat sebelum mengubah isian.');
+   if(review.returnedRevision!=null&&tripRevision<=review.returnedRevision)throw new Error('Perbaikan harus menggunakan revisi dokumen yang baru.');
+   next.state=['returned','revising'].includes(review.state)?'revising':'draft';next.submittedRevision=null;next.checkedRevision=null;next.approvedRevision=null;break;
   case 'finalize':
    if(!is(review.makerEmail)||review.state!=='approved')throw new Error('Finalisasi memerlukan persetujuan atas revisi ini.');
    current();if(review.checkedRevision!==tripRevision||review.approvedRevision!==tripRevision)throw new Error('Persetujuan tidak berlaku untuk revisi ini.');next.state='final';break;

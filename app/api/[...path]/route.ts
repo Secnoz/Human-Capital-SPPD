@@ -40,7 +40,7 @@ async function handle(req:Request){
    admin(c);output=await saveAccount(body,c);
   }else if(path[0]==='trips'){
    const id=path[1],action=path[2];
-   if(id&&['submit','check','approve','return','reject','revise'].includes(action||''))throw new HttpError(409,'Checker dan approval masih tahap persiapan. Proses persetujuan belum diaktifkan.');
+   if(id&&['submit','resubmit','check','approve','return','reject','revise'].includes(action||''))throw new HttpError(409,'Checker dan approval masih tahap persiapan. Proses persetujuan belum diaktifkan.');
    if(id&&action==='finalize'&&method==='POST'){output=await finalize(id,Number(body.revision),c.email);
    }else if(id&&action==='cancel'&&method==='POST'){admin(c);const reason=text(body.reason,500);if(!reason)throw new HttpError(400,'Alasan pembatalan wajib diisi.');const result=await db().prepare("UPDATE trips SET status='cancelled',cancel_reason=?,updated_at=?,revision=revision+1 WHERE id=? AND status='final'").bind(reason,new Date().toISOString(),id).run();if(!result.meta.changes)throw new HttpError(409,'Hanya SPPD Final yang dapat dibatalkan.');await log(c.email,'trip.cancelled',id,{reason});output=await tripById(id);
    }else if(id&&method==='GET'){output=await tripById(id);

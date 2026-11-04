@@ -36,7 +36,7 @@ Model transisi murni berada di `src/lib/approval.ts` dan diuji melalui `scripts/
 - Tombol **Simpan rancangan** menyimpan konfigurasi berstatus `preparation`, dengan pemeriksaan konflik versi.
 - Pengaturan disimpan pada key `approval_preparation_v1` di tabel settings yang sudah ada. Cadangan rutin sudah mencakup tabel ini.
 - Riwayat aktivitas mencatat `approval.preparation.saved` beserta versi dan calon akun. Riwayat keputusan per SPPD belum dibuat karena proses operasional belum diaktifkan.
-- API pengajuan/pemeriksaan/persetujuan belum dapat dijalankan; permintaan tindakan tersebut mengembalikan 409. Aktivasi dari payload rancangan ditolak.
+- API pengajuan/pengajuan ulang/pemeriksaan/persetujuan belum dapat dijalankan; permintaan tindakan tersebut mengembalikan 409. Aktivasi dari payload rancangan ditolak.
 - Finalisasi langsung, perhitungan, data pegawai, nomor, dan dua hasil cetak tetap mengikuti alur yang sedang digunakan.
 
 ## Sebelum aktivasi operasional
@@ -44,3 +44,22 @@ Model transisi murni berada di `src/lib/approval.ts` dan diuji melalui `scripts/
 Perlu penetapan akun untuk kedua jabatan yang telah ditentukan, cakupan wewenang per unit/jenis perjalanan/nominal, pengganti saat pejabat tidak tersedia, siapa yang memfinalkan setelah persetujuan, dan kapan pemeriksaan ulang diperlukan jika data induk/tarif berubah.
 
 Setelah keputusan diterima, implementasikan penyimpanan pengajuan dan riwayat keputusan per SPPD, penguncian revisi beserta snapshot data/tarif, pemeriksaan kewenangan server, antrean tugas, tombol pengajuan/pengembalian/persetujuan, serta penghalang finalisasi untuk revisi yang belum disetujui. Aktivasi harus menjadi perubahan terpisah yang diminta pengguna; tidak ada tombol aktivasi pada tahap ini.
+
+## Persiapan revisi dan pengajuan ulang
+
+Alur: **Menunggu checker → Perlu revisi → Sedang diperbaiki → Diajukan ulang → Menunggu checker**.
+
+1. Checker (Kepala Bagian Kompensasi dan Manfaat) mengembalikan pengajuan dengan alasan wajib. Model menyimpan alasan, pelaku, waktu, dan revisi yang dikembalikan.
+2. Pembuat memperbaiki draf SPPD yang sama. Setiap penyimpanan perbaikan menaikkan revisi, menyimpan perubahan isian sebelum/sesudah, dan menghitung ulang biaya. Snapshot pengajuan sebelumnya tidak ditimpa.
+3. Pengajuan ulang hanya dari pembuat, setelah ada perubahan nyata dan revisi baru. Catatan perbaikan wajib diisi, kemudian data perjalanan dan perhitungan divalidasi ulang.
+4. Pengajuan ulang menyimpan snapshot baru beserta nomor versi, waktu, catatan, identitas/rekening peserta, tarif, dan total. Pemeriksaan serta persetujuan versi sebelumnya tidak berlaku bagi revisi baru.
+5. Pengajuan ulang selalu kembali ke checker. Setelah lolos, revisi tersebut diteruskan ke approver (Kepala Divisi Human Capital). Pengembalian dari approver juga memerlukan pemeriksaan checker kembali.
+6. Nomor manual pada draf tetap dipertahankan selama tidak diubah pembuat. Model ini tidak mengonsumsi atau menerbitkan nomor otomatis.
+
+Implementasi persiapan: `src/lib/approval-revisions.ts` menyediakan model murni untuk snapshot pengajuan, perubahan isian, perhitungan ulang, riwayat keputusan, serta pemeriksaan keterkaitan revisi. Belum ada penyimpanan riwayat persetujuan SPPD operasional atau kewenangan akun baru.
+
+Di Pengaturan terdapat **Simulasi alur revisi (data contoh)**. Simulasi memakai data sintetis dan identitas `.invalid` yang bukan akun login. State hanya di memori halaman; tidak memanggil API mutasi, menulis data operasional, atau membuat akun. Muat ulang halaman mengembalikan simulasi ke awal.
+
+Validasi: `scripts/verify-approval-revisions.mjs` memeriksa kewenangan pembuat/checker/approver, catatan wajib, perubahan nyata, pengajuan ulang, snapshot lama, versi, perubahan biaya, nomor tetap, dan penolakan data yang berbeda dari pengajuan. `scripts/verify-api-approval-disabled.mjs` memastikan endpoint tetap 409 untuk semua metode dan akun/dokumen/nomor/penugasan tidak berubah; pengujian ini hanya menggunakan loopback lokal dan tidak membuat akun.
+
+Aktivasi tetap menjadi perubahan terpisah setelah akun checker dan approver dibuat serta pengguna meminta aktivasi. Pembuatan akun saja tidak mengaktifkan alur secara otomatis.

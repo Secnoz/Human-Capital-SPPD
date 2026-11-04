@@ -20,7 +20,7 @@ eq(saved.enabled,false);eq(saved.revision,original.revision+1);eq(saved.checkerE
 await call('approval/preparation','PATCH',original,409);
 const races=await Promise.all(['A','B'].map(notes=>fetch(base+'/api/approval/preparation',{method:'PATCH',headers:{cookie,origin:base,'content-type':'application/json'},body:JSON.stringify({...saved,notes})}).then(response=>response.status)));
 eq(races.sort(),[200,409]);
-for(const action of ['submit','check','approve','return','reject','revise'])for(const method of ['POST','PATCH','DELETE','GET'])await call('trips/test/'+action,method,method==='GET'?undefined:{},409);
+for(const action of ['submit','resubmit','check','approve','return','reject','revise'])for(const method of ['POST','PATCH','DELETE','GET'])await call('trips/test/'+action,method,method==='GET'?undefined:{},409);
 await call('approval/activate','PATCH',{enabled:true},404);
 const current=await call('approval/preparation');await call('approval/preparation','PATCH',{...original,revision:current.revision});
 const restored=await call('approval/preparation');eq(restored.enabled,false);eq(restored.checkerEmail,original.checkerEmail);eq(restored.approverEmail,original.approverEmail);

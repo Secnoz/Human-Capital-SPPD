@@ -21,7 +21,7 @@ for(const action of ['return','reject']){
  reject(()=>transition(submitted.review,action,emails[1]));
  const decision=transition(submitted.review,action,emails[1],1,' Periksa rekening. ');eq(decision.event.comment,'Periksa rekening.');eq(decision.review.state,action==='return'?'returned':'rejected');
  eq(decision.review.approvedRevision,null);
- if(action==='return'){const revised=transition(decision.review,'revise',emails[0],2);eq(revised.review.submittedRevision,null);eq(transition(revised.review,'submit',emails[0],2).review.submittedRevision,2);}else reject(()=>transition(decision.review,'submit',emails[0],2));
+ if(action==='return'){const revised=transition(decision.review,'revise',emails[0],2);eq(revised.review.submittedRevision,null);eq(transition(revised.review,'resubmit',emails[0],2,'Sudah diperbaiki.').review.submittedRevision,2);}else reject(()=>transition(decision.review,'submit',emails[0],2));
 }
 const revised=transition(approved.review,'revise',emails[0],2);eq(revised.review.state,'draft');eq(revised.review.checkedRevision,null);eq(revised.review.approvedRevision,null);
 reject(()=>transition(revised.review,'finalize',emails[0],2));
