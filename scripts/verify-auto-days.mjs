@@ -36,4 +36,11 @@ for(const scenario of ['dalam_provinsi','luar_provinsi'])for(let criterion=1;cri
  eq(result.errors,[]);eq(selected.paidDays,days);eq(selected.nights,days-1);eq(result.participants[0].allowance,rate.daily*days);eq(result.participants[0].cityTaxi,rate.cityTaxi*days);eq(result.participants[0].airport,scenario==='luar_provinsi'?rate.airport:0);
 }
 const manualPrint=printValues({number:'UJI',data:manual,total:2625000},{},{});eq(manualPrint.document.paidDays,3);eq(manualPrint.document.nightsDisplay,'2');eq(manualPrint.document.itineraryText.includes('3 Hari / 2 Malam'),true);
+
+const manualNights=patchTrip(manual,{nightsOverride:5});eq(manualNights.paidDays,3);eq(manualNights.nights,5);eq(calculate(manualNights,[employee],tariffs,true).errors,[]);eq(calculate(manualNights,[employee],tariffs).total,2625000);
+eq(normalizeDraft(manualNights).nights,5);eq(normalizeDraft(manualNights).nightsOverride,5);
+const changedDays=patchTrip(manualNights,{paidDaysOverride:7});eq(changedDays.nights,5);eq(changedDays.paidDays,7);eq(patchTrip(changedDays,{nightsOverride:null}).nights,6);
+const zeroNights=patchTrip(manualNights,{nightsOverride:0});eq(zeroNights.nights,0);eq(calculate(zeroNights,[employee],tariffs,true).errors,[]);
+for(const d of [manualNights,zeroNights])eq(printValues({number:'UJI',data:d,total:2625000},{},{}).document.nightsDisplay,String(d.nights));
+for(const nightsOverride of [-1,1.5,367])eq(calculate(patchTrip(manual,{nightsOverride}),[employee],tariffs,true).errors.length>0,true);
 console.log(`${checks} pemeriksaan hari otomatis lulus: kalender inklusif, biaya, validasi, migrasi draf, arsip, dan nilai cetak.`);

@@ -27,6 +27,12 @@ for(const paidDaysOverride of [-1,1.5,367,'abc'])await call('trips','POST',{data
 const emptyDays=await call('trips','POST',{data:{...trip(),paidDaysOverride:0}});eq(emptyDays.data.paidDays,0);eq(emptyDays.data.nights,0);await call('trips/'+emptyDays.id+'/finalize','POST',{revision:emptyDays.revision},400);
 const fixedDays=await call('trips/'+manualDays.id,'PATCH',{revision:autoAgain.revision,data:{...trip(),returnDate:'2026-11-10',paidDaysOverride:3}});const finalManual=await call('trips/'+fixedDays.id+'/finalize','POST',{revision:fixedDays.revision});eq(finalManual.data.paidDays,3);eq(finalManual.data.nights,2);eq(finalManual.data.paidDaysOverride,3);
 const manualRate=before.tariffs.find(rate=>rate.scenario==='luar_provinsi'&&rate.criterion===employee.criterion&&rate.validFrom<='2026-11-04'&&(!rate.validUntil||rate.validUntil>='2026-11-04'));eq(finalManual.total,manualRate.daily*3+manualRate.cityTaxi*3+manualRate.airport);
+
+const nightDraft=await call('trips','POST',{data:{...trip(),paidDaysOverride:3,nightsOverride:5,nights:999}});eq(nightDraft.data.nights,5);eq(nightDraft.data.nightsOverride,5);eq(nightDraft.data.paidDays,3);eq(nightDraft.total,manualRate.daily*3+manualRate.cityTaxi*3+manualRate.airport);
+const zeroNight=await call('trips/'+nightDraft.id,'PATCH',{revision:nightDraft.revision,data:{...trip(),paidDaysOverride:4,nightsOverride:0}});eq(zeroNight.data.nights,0);eq(zeroNight.data.paidDays,4);
+const resetNight=await call('trips/'+nightDraft.id,'PATCH',{revision:zeroNight.revision,data:{...trip(),paidDaysOverride:4,nightsOverride:null}});eq(resetNight.data.nights,3);
+const customNight=await call('trips/'+nightDraft.id,'PATCH',{revision:resetNight.revision,data:{...trip(),paidDaysOverride:3,nightsOverride:5}});const finalizedNight=await call('trips/'+nightDraft.id+'/finalize','POST',{revision:customNight.revision});eq(finalizedNight.data.nights,5);eq(finalizedNight.data.nightsOverride,5);eq((await call('trips/'+nightDraft.id)).data.nights,5);
+for(const nightsOverride of [-1,0.5,367,'x'])await call('trips','POST',{data:{...trip(),nightsOverride}},400);
 const after=await call('bootstrap');eq(after.members,before.members);eq(after.employees,before.employees);
 for(const historic of before.trips.filter(trip=>trip.status==='final')){const unchanged=after.trips.find(trip=>trip.id===historic.id);eq(unchanged,historic);}
 eq((await call('approval/preparation')).enabled,false);

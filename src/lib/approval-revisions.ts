@@ -11,7 +11,7 @@ export function createRevisionPreparation(document:TripRecord,accounts:Pick<Appr
  return{document:structuredClone(document),review:{...accounts,state:'draft',submittedRevision:null,checkedRevision:null,approvedRevision:null,returnedRevision:null,returnReason:''},submissions:[],events:[]};
 }
 
-const tripFields=['scenario','purpose','issueDate','issueCity','numberOverride','originOfficeId','originLat','originLng','origin','destination','destinationPlaceId','destinationLat','destinationLng','reason','departureDate','returnDate','paidDays','paidDaysOverride','nights','dayReason','transport','note','note1','note2','manualDistanceKm','distanceReason','region'] as const;
+const tripFields=['scenario','purpose','issueDate','issueCity','numberOverride','originOfficeId','originLat','originLng','origin','destination','destinationPlaceId','destinationLat','destinationLng','reason','departureDate','returnDate','paidDays','paidDaysOverride','nights','nightsOverride','dayReason','transport','note','note1','note2','manualDistanceKm','distanceReason','region'] as const;
 const participantFields=['employeeId','code','adjustmentReason','criterionOverride','allowanceOverride','cityTaxiOverride','airportOverride','intercityOverride','domesticTaxiEnabled','creditNameOverride','bankAccountOverride'] as const;
 export function approvalChanges(before:TripData,after:TripData){
  const changes:ApprovalChange[]=[];
