@@ -1,10 +1,10 @@
 import {build} from 'esbuild';
 import assert from 'node:assert/strict';
 await build({entryPoints:['src/lib/approval.ts'],bundle:true,platform:'node',format:'esm',outfile:'.sites-runtime/approval.mjs'});
-const {APPROVAL_ENABLED,emptyApprovalPreparation,validateApprovalPreparation,planApprovalTransition}=await import('../.sites-runtime/approval.mjs');
+const {APPROVAL_POSITIONS,APPROVAL_ENABLED,emptyApprovalPreparation,validateApprovalPreparation,planApprovalTransition}=await import('../.sites-runtime/approval.mjs');
 let checks=0;const eq=(actual,expected)=>{assert.deepEqual(actual,expected);checks++;},reject=fn=>{assert.throws(fn);checks++;};
 const emails=['maker@sppd.test','checker@sppd.test','approver@sppd.test'];
-eq(APPROVAL_ENABLED,false);eq(emptyApprovalPreparation().enabled,false);
+eq(APPROVAL_ENABLED,false);eq(emptyApprovalPreparation().checkerPosition,'Kepala Bagian Kompensasi dan Manfaat');eq(emptyApprovalPreparation().approverPosition,'Kepala Divisi Human Capital');eq(emptyApprovalPreparation().checkerEmail,'');eq(emptyApprovalPreparation().approverEmail,'');eq(validateApprovalPreparation({...emptyApprovalPreparation()},emails).errors,[]);eq(validateApprovalPreparation({...emptyApprovalPreparation(),checkerPosition:'Jabatan lain'},emails).errors.length>0,true);eq(validateApprovalPreparation({...emptyApprovalPreparation(),approverPosition:'Jabatan lain'},emails).errors.length>0,true);eq(emptyApprovalPreparation().enabled,false);
 eq(validateApprovalPreparation({revision:0},emails).errors,[]);
 const prepared=validateApprovalPreparation({revision:0,checkerEmail:' Checker@SPPD.test ',approverEmail:emails[2],notes:' Rancangan '},emails);
 eq(prepared.errors,[]);eq(prepared.checkerEmail,emails[1]);eq(prepared.notes,'Rancangan');

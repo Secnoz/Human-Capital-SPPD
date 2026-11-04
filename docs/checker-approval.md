@@ -9,9 +9,11 @@ Draf → menunggu checker → menunggu approver → disetujui → finalisasi.
 | Peran | Tanggung jawab yang direncanakan |
 | --- | --- |
 | Pembuat | Membuat draf, memilih peserta/kriteria, memeriksa biaya dan cetakan, mengajukan, serta memperbaiki dokumen yang dikembalikan. |
-| Checker | Memeriksa perjalanan, hari dibayar, dasar jarak, identitas/rekening, kriteria/tarif, override biaya, dan pembebanan; meneruskan atau mengembalikan dengan alasan. |
-| Approver | Menyetujui revisi yang sudah diperiksa atau mengembalikannya dengan alasan; dapat menolak sesuai aturan perusahaan yang nanti ditetapkan. |
+| Checker — Kepala Bagian Kompensasi dan Manfaat | Memeriksa perjalanan, hari dibayar, dasar jarak, identitas/rekening, kriteria/tarif, override biaya, dan pembebanan; meneruskan atau mengembalikan dengan alasan. |
+| Approver — Kepala Divisi Human Capital | Menyetujui revisi yang sudah diperiksa atau mengembalikannya dengan alasan; dapat menolak sesuai aturan perusahaan yang nanti ditetapkan. |
 | Admin | Mengatur rancangan dan akun; status admin sendiri tidak memberikan hak menyetujui dokumen atas nama pejabat lain. |
+
+Jabatan checker dan approver telah ditetapkan pengguna. Akun kedua pejabat akan dibuat dan dipilih nanti; tidak ada pembuatan atau penetapan akun otomatis.
 
 Asumsi rancangan: satu checker dan satu approver berurutan, dengan akun berbeda dari pembuat. Ini rancangan awal untuk dikonfirmasi, bukan penetapan kewenangan perusahaan.
 
@@ -39,6 +41,6 @@ Model transisi murni berada di `src/lib/approval.ts` dan diuji melalui `scripts/
 
 ## Sebelum aktivasi operasional
 
-Perlu keputusan pengguna mengenai siapa checker dan approver, cakupan wewenang per unit/jenis perjalanan/nominal, pengganti saat pejabat tidak tersedia, siapa yang memfinalkan setelah persetujuan, dan kapan pemeriksaan ulang diperlukan jika data induk/tarif berubah.
+Perlu penetapan akun untuk kedua jabatan yang telah ditentukan, cakupan wewenang per unit/jenis perjalanan/nominal, pengganti saat pejabat tidak tersedia, siapa yang memfinalkan setelah persetujuan, dan kapan pemeriksaan ulang diperlukan jika data induk/tarif berubah.
 
 Setelah keputusan diterima, implementasikan penyimpanan pengajuan dan riwayat keputusan per SPPD, penguncian revisi beserta snapshot data/tarif, pemeriksaan kewenangan server, antrean tugas, tombol pengajuan/pengembalian/persetujuan, serta penghalang finalisasi untuk revisi yang belum disetujui. Aktivasi harus menjadi perubahan terpisah yang diminta pengguna; tidak ada tombol aktivasi pada tahap ini.

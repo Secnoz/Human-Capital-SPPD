@@ -1,18 +1,20 @@
 export const APPROVAL_ENABLED=false;
+export const APPROVAL_POSITIONS={checker:'Kepala Bagian Kompensasi dan Manfaat',approver:'Kepala Divisi Human Capital'} as const;
 export const APPROVAL_STEPS=[
  {id:'draft',label:'Draf',actor:'Pembuat',description:'Menyiapkan perjalanan, peserta, biaya, dan dua lembar cetak.'},
- {id:'pending_check',label:'Pemeriksaan',actor:'Checker',description:'Memeriksa identitas, rekening, tarif, pembebanan, dan rincian perjalanan.'},
- {id:'pending_approval',label:'Persetujuan',actor:'Approver',description:'Meninjau hasil pemeriksaan untuk menyetujui atau mengembalikan dokumen.'},
+ {id:'pending_check',label:'Pemeriksaan',actor:'Checker',description:`${APPROVAL_POSITIONS.checker} memeriksa identitas, rekening, tarif, pembebanan, dan rincian perjalanan.`},
+ {id:'pending_approval',label:'Persetujuan',actor:'Approver',description:`${APPROVAL_POSITIONS.approver} meninjau hasil pemeriksaan untuk menyetujui atau mengembalikan dokumen.`},
  {id:'approved',label:'Siap finalisasi',actor:'Pembuat',description:'Menerbitkan dokumen sesuai revisi yang telah disetujui.'},
 ] as const;
 export type ApprovalState='draft'|'pending_check'|'pending_approval'|'approved'|'returned'|'rejected'|'final';
 export type ApprovalAction='submit'|'check'|'approve'|'return'|'reject'|'revise'|'finalize';
-export interface ApprovalPreparation{enabled:false;mode:'preparation';revision:number;checkerEmail:string;approverEmail:string;notes:string;updatedAt:string|null;updatedBy:string|null}
-export const emptyApprovalPreparation=():ApprovalPreparation=>({enabled:false,mode:'preparation',revision:0,checkerEmail:'',approverEmail:'',notes:'',updatedAt:null,updatedBy:null});
+export interface ApprovalPreparation{enabled:false;mode:'preparation';revision:number;checkerPosition:string;approverPosition:string;checkerEmail:string;approverEmail:string;notes:string;updatedAt:string|null;updatedBy:string|null}
+export const emptyApprovalPreparation=():ApprovalPreparation=>({enabled:false,mode:'preparation',revision:0,checkerPosition:APPROVAL_POSITIONS.checker,approverPosition:APPROVAL_POSITIONS.approver,checkerEmail:'',approverEmail:'',notes:'',updatedAt:null,updatedBy:null});
 
 export function validateApprovalPreparation(raw:Record<string,unknown>,activeEmails:string[]){
  const errors:string[]=[];
  if(raw.enabled!=null&&raw.enabled!==false||raw.mode!=null&&raw.mode!=='preparation')errors.push('Checker dan approval masih tahap persiapan; aktivasi belum tersedia.');
+ if(raw.checkerPosition!=null&&raw.checkerPosition!==APPROVAL_POSITIONS.checker||raw.approverPosition!=null&&raw.approverPosition!==APPROVAL_POSITIONS.approver)errors.push('Jabatan checker dan approver mengikuti rancangan yang telah ditetapkan.');
  const email=(key:string)=>{if(raw[key]!=null&&typeof raw[key]!=='string'){errors.push('Pilih akun HC yang valid.');return'';}return String(raw[key]||'').trim().toLowerCase();};
  const checkerEmail=email('checkerEmail'),approverEmail=email('approverEmail');
  for(const address of [checkerEmail,approverEmail])if(address&&!activeEmails.includes(address))errors.push('Calon checker dan approver harus merupakan akun HC aktif.');
