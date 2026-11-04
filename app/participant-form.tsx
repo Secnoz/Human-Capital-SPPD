@@ -1,7 +1,7 @@
 'use client';
 import {RotateCcw,X} from 'lucide-react';
 import RupiahInput from '../components/rupiah-input';
-import {money,type Participant,type Employee,type Scenario,type Purpose} from '../src/lib/domain';
+import {GROUPS,money,type Participant,type Employee,type Scenario,type Purpose} from '../src/lib/domain';
 
 function Amount({label,automatic,value,onChange,help}:{label:string;automatic:number;value?:number|null;onChange:(v:number|null)=>void;help:string}){
  return <label className="field amount-field"><span>{label}<em className={value!=null?'override-badge':'auto-badge'}>{value!=null?'Diubah HC':'Otomatis'}</em></span>
@@ -15,7 +15,8 @@ export default function ParticipantForm({participant:p,computed:c,employee:e,ind
  return <article className="participant">
   <div className="participant-heading"><span className="participant-number">{index+1}</span><div><b>{e?.name||'Pegawai tidak tersedia'}</b><small>{e?.employeeNo} · {title||'Jabatan belum diisi'} · Kriteria {Number.isFinite(c.employee?.criterion)?c.employee?.criterion:'—'}</small></div><button type="button" className="icon-button danger-text" aria-label={'Hapus peserta '+(e?.name||'')} onClick={onRemove}><X size={16}/></button></div>
   <div className="form-grid participant-fields">
-   <label className="field wide"><span>Jabatan</span><input aria-label={'Jabatan peserta '+(index+1)} value={title} readOnly/><small>Jabatan dan kriteria tarif mengikuti master pegawai.</small></label>
+   <label className="field wide"><span>Jabatan</span><input aria-label={'Jabatan peserta '+(index+1)} value={title} readOnly/><small>Jabatan mengikuti data pegawai.</small></label>
+   <label className="field wide"><span>Kriteria biaya</span><select aria-label={'Kriteria biaya peserta '+(index+1)} value={p.criterionOverride??''} onChange={event=>onChange({criterionOverride:event.currentTarget.value?Number(event.currentTarget.value):null,allowanceOverride:null,cityTaxiOverride:null,airportOverride:null})}><option value="">Ikuti master · Kriteria {e?.criterion??'—'}</option>{GROUPS.map(group=><option value={group.id} key={group.id}>Kriteria {group.id} · {group.label}</option>)}</select><small>{p.criterionOverride!=null?`Kriteria ${p.criterionOverride} berlaku untuk SPPD ini. Kriteria master: ${e?.criterion}.`:'Tarif otomatis mengikuti kriteria master pegawai.'} Mengubah pilihan ini menghitung ulang uang saku dan taksi sesuai ketentuan.</small></label>
    <Amount label="Uang saku (Rp/orang)" value={p.allowanceOverride} automatic={automatic.allowance} onChange={v=>onChange({allowanceOverride:v})} help={`Ketentuan ${money(c.rate?.daily||0)} × ${paidDays} hari dibayar. Total dapat diubah untuk SPPD ini.`}/>
    {scenario==='luar_provinsi'?<>
     <Amount label="Taksi bandara (Rp/orang)" value={p.airportOverride} automatic={automatic.airport} onChange={v=>onChange({airportOverride:v})} help="Total untuk perjalanan ini; dihitung satu kali."/>

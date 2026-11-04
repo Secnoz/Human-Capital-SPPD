@@ -13,7 +13,7 @@ export function printValues(trip:TripRecord,settings:Settings,t:Template){
  return{document:{number:nomor,authorizingRole:d.commander||settings.commander,originName:d.origin,destinationName:d.destination,purpose:d.reason,paidDays:d.paidDays,nightsDisplay:n,departureDateText:dateLabel(d.departureDate),returnDateText:dateLabel(d.returnDate),transportLabel:d.transport,paymentRepresentative:(d.participants[0]?.employee?.name||'')+(t.representativeSuffix||''),paymentReference:nomor+', '+dateLabel(d.issueDate),itineraryText:`${d.destination} ${d.paidDays} Hari / ${n} Malam,${t.id==='payment-md-general'?' ':''}${dateLabel(d.departureDate)} - ${dateLabel(d.returnDate)}`,issuePlaceDateText:`${d.issueCity}, ${dateLabel(d.issueDate)}`,signatureName:d.signerName||settings.signerName,signatureRole:d.signerPosition||settings.signerPosition,total:trip.total,totalInWords:terbilang(trip.total)},participants:d.participants.map((p,i)=>({name:p.employee?.name||'',employeeNumber:p.employee?.employeeNo||'',accountNumber:p.employee?.bankAccount||'',creditName:p.employee?.creditName||'',position:p.employee?.position||'',unit:p.employee?.unit||'',sequence:String(i+1)+(t.participantSequenceSuffix||''),separator:'/',pocket:p.allowance||0,dailyTaxiTotal:p.cityTaxi||0,airportTaxiTotal:p.airport||0,intercityTotal:p.intercity||0,budgetCode:p.code||'',total:p.total||0}))};
 }
 function resolve(root:unknown,path:string):unknown{return path.split('.').reduce((p,k)=>p!=null?(p as Record<string,unknown>)[k]:undefined,root);}
-export function printedNotes(data:Pick<TripData,'note1'|'note2'>){return([{label:'Catatan 1',text:data.note1||''},{label:'Catatan 2',text:data.note2||''}]).filter(n=>n.text.trim()).map(n=>({...n,text:n.text.trim()}));}
+export function printedNotes(data:Pick<TripData,'note1'|'note2'>,templateId:string){const note=templateId.startsWith('sppd')?{label:'Catatan 1',text:data.note1||''}:{label:'Catatan 2',text:data.note2||''};return note.text.trim()?[{...note,text:note.text.trim()}]:[];}
 export function printNotesArea(id:string):Box{
  const t=templates[id];if(!t)throw new Error('Template tidak tersedia.');
  if(id.startsWith('sppd'))return{x:44.55,y:710,width:t.page.widthPt-89.1,height:t.page.heightPt-764};
@@ -21,7 +21,7 @@ export function printNotesArea(id:string):Box{
  return{x:50.8,y:425,width:(signature?.pageBoxPt.x??518)-70.8,height:t.page.heightPt-479};
 }
 function renderNotes(ctx:CanvasRenderingContext2D,data:TripData,id:string,issues:string[]){
- const notes=printedNotes(data);if(!notes.length)return[];
+ const notes=printedNotes(data,id);if(!notes.length)return[];
  const box=printNotesArea(id),fontSize=8,lineHeight=10,bodyX=box.x+49,bodyWidth=box.width-49,layout:{label:string;lines:string[];y:number}[]=[];let top=box.y;
  ctx.save();ctx.beginPath();ctx.rect(box.x,box.y,box.width,box.height);ctx.clip();ctx.fillStyle='#000';ctx.textAlign='left';ctx.textBaseline='alphabetic';
  for(const note of notes){

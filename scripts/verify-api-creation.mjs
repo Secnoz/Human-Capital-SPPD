@@ -1,0 +1,32 @@
+// Writes synthetic fixtures only to the disposable loopback database.
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+const base='http://127.0.0.1:5173';let checks=0;
+const password=(await fs.readFile('../outputs/Akun-Admin-SPPD.txt','utf8')).match(/Kata sandi awal: (.+)/)[1].trim();
+const signed=await fetch(base+'/api/auth/sign-in/email',{method:'POST',headers:{'content-type':'application/json',origin:base},body:JSON.stringify({email:'admin@sppd.test',password,rememberMe:false})});assert.equal(signed.status,200);
+const cookie=signed.headers.getSetCookie().map(value=>value.split(';')[0]).join('; ');
+async function call(path,method='GET',body,status=200){const response=await fetch(base+'/api/'+path,{method,headers:{cookie,origin:base,...(body?{'content-type':'application/json'}:{})},body:body?JSON.stringify(body):undefined});const json=await response.json();assert.equal(response.status,status,JSON.stringify(json));checks++;return json;}
+const eq=(actual,expected)=>{assert.deepEqual(actual,expected);checks++;};
+const employee=await call('employees','POST',{employeeNo:'CREATION-'+Date.now(),name:'Pegawai Uji Pencarian',position:'Analis Uji',unit:'Unit Uji Pencarian',criterion:7,creditName:'Pegawai Uji Pencarian',bankAccount:'000000001234',active:1});
+const trip=(numberOverride=null)=>({costVersion:3,numberOverride,scenario:'luar_provinsi',purpose:'pendidikan',issueDate:'2026-11-04',issueCity:'Banjarmasin',originOfficeId:'unit-uji',origin:'Unit Uji',destination:'Tujuan Uji',reason:'Uji pembuatan dan penomoran',departureDate:'2026-11-04',returnDate:'2026-11-06',paidDays:3,nights:2,transport:'Pesawat',note1:'HANYA SPPD',note2:'HANYA PERMINTAAN UANG',participants:[{employeeId:employee.id,criterionOverride:3,intercity:0,adjustmentReason:''}]});
+const initial=await call('bootstrap'),year='2026',last=initial.numberCounters.find(c=>c.year===year)?.value||0,sequence=last+10,pattern=initial.settings.numberPattern,manual=pattern.replaceAll('{year}',year).replace('{sequence}',String(sequence));
+for(const override of [0,11,1.5,'x'])await call('trips','POST',{data:{...trip(),participants:[{...trip().participants[0],criterionOverride:override}]}},400);
+for(const numberOverride of ['A'.repeat(121),'123\nSPPD',123])await call('trips','POST',{data:trip(numberOverride)},400);
+const draft=await call('trips','POST',{data:trip('  '+manual+'  ')});eq(draft.data.numberOverride,manual);eq(draft.number,null);
+const reloaded=await call('trips/'+draft.id);eq(reloaded.data.participants[0].criterionOverride,3);
+const final=await call('trips/'+draft.id+'/finalize','POST',{revision:draft.revision});eq(final.number,manual);eq(final.data.participants[0].rate.criterion,3);eq(final.data.participants[0].employee.position,employee.position);eq(final.data.participants[0].employee.criterion,3);
+const boot=await call('bootstrap');eq(boot.employees.find(e=>e.id===employee.id).criterion,7);eq(boot.numberCounters.find(c=>c.year===year).value,sequence);
+const duplicate=await call('trips','POST',{data:trip(manual)});await call('trips/'+duplicate.id+'/finalize','POST',{revision:duplicate.revision},409);eq((await call('bootstrap')).numberCounters.find(c=>c.year===year).value,sequence);
+const same=await call('trips/'+draft.id+'/finalize','POST',{revision:draft.revision});eq(same.number,manual);
+await call('trips/'+draft.id,'PATCH',{revision:final.revision,data:trip('CHANGED')},409);
+const auto=await call('trips','POST',{data:trip()}),auto2=await call('trips','POST',{data:trip()});
+const automatic=await Promise.all([call('trips/'+auto.id+'/finalize','POST',{revision:auto.revision}),call('trips/'+auto2.id+'/finalize','POST',{revision:auto2.revision})]);
+eq(new Set(automatic.map(t=>t.number)).size,2);eq(automatic.map(t=>Number(t.number.split('/')[0])).sort((a,b)=>a-b),[sequence+1,sequence+2]);
+const custom='HC-UJI-'+Date.now()+'/2026',customDraft=await call('trips','POST',{data:trip(custom)});const changed=await call('trips/'+customDraft.id,'PATCH',{revision:customDraft.revision,data:{...trip(custom),participants:[{...trip().participants[0],criterionOverride:8}]}});eq(changed.data.participants[0].criterionOverride,8);
+const customFinal=await call('trips/'+changed.id+'/finalize','POST',{revision:changed.revision});eq(customFinal.number,custom);eq(customFinal.data.participants[0].rate.criterion,8);
+eq((await call('bootstrap')).numberCounters.find(c=>c.year===year).value,sequence+2);
+const raceNumber='HC-RACE-'+Date.now(),races=await Promise.all([call('trips','POST',{data:trip(raceNumber)}),call('trips','POST',{data:trip(raceNumber)})]);
+const raceResults=await Promise.all(races.map(d=>fetch(base+'/api/trips/'+d.id+'/finalize',{method:'POST',headers:{cookie,origin:base,'content-type':'application/json'},body:JSON.stringify({revision:d.revision})}).then(async response=>({status:response.status,body:await response.json()}))));
+eq(raceResults.map(r=>r.status).sort(),[200,409]);
+await fs.writeFile('.sites-runtime/creation-preview.json',JSON.stringify({id:final.id,number:manual}));
+console.log(`${checks} pemeriksaan API pembuatan lulus: nomor manual/otomatis, konflik dan konkurensi, kriteria, snapshot, dan validasi.`);

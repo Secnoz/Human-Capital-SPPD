@@ -27,11 +27,11 @@ Atur `BETTER_AUTH_SECRET` dan `SPPD_ADMIN_PASSWORD_HASH` sebagai secrets runtime
 - Taksi dalam kota otomatis = tarif kota × **hari dibayar**, untuk kedua jenis perjalanan. Pilihan taksi dalam provinsi tetap opsional. Taksi bandara tetap satu kali.
 - Hari dibayar dapat diedit. Malam otomatis = `maksimum(hari dibayar - 1, 0)`, sesuai konfirmasi pengguna. Perbedaan dengan durasi kalender tetap memerlukan alasan. Input angka bisa dikosongkan sementara saat mengetik tanpa memunculkan kembali angka 0.
 - Transport antar kota otomatis mengambil nominal wilayah I–VI dari hasil jarak **sekali jalan** atau keputusan wilayah HC. Nominal otomatis sama dengan nilai referensi wilayah pada master dan tidak dikalikan hari. HC tetap dapat mengganti total per peserta, termasuk 0. Jika lokasi berubah, jarak/wilayah sebelumnya dihapus. Tepat 100 km memerlukan pilihan wilayah V atau VI. Bila jarak/wilayah belum tersedia, finalisasi memerlukan isian manual, termasuk 0 bila tidak dibayar.
-- Jabatan dan kriteria tarif peserta mengikuti master pegawai. Penyesuaian Plt./Pgs. ditunda sesuai permintaan pengguna sampai alurnya diberikan. Jabatan pada form hanya dapat dibaca. Draf dengan penyesuaian jabatan lama harus dibuka dan disimpan ulang; dokumen yang sudah final tetap memakai snapshot semula.
-- **Catatan 1** dan **Catatan 2** masing-masing maksimal 300 karakter dan dicetak pada kedua lembar. Catatan kosong tidak dicetak. Catatan internal HC tetap terpisah. Teks dibungkus pada area kosong yang telah diperiksa; bila tidak muat, cetak/finalisasi dari UI meminta catatan diringkas.
+- Jabatan peserta mengikuti master dan hanya dapat dibaca. Pilihan **Kriteria biaya** dapat diubah untuk satu peserta dalam SPPD ini tanpa mengubah data induk. Pergantian kriteria menghitung ulang uang saku/taksi dan mengembalikan komponen tersebut ke nilai otomatis. Draf dengan penyesuaian jabatan lama harus dibuka dan disimpan ulang; dokumen yang sudah final tetap memakai snapshot semula.
+- **Catatan 1** dan **Catatan 2** masing-masing maksimal 300 karakter. Catatan 1 hanya dicetak pada Lembar SPPD; Catatan 2 hanya pada Lembar Permintaan Uang. Catatan kosong tidak dicetak. Catatan internal HC tetap terpisah. Teks dibungkus pada area kosong yang telah diperiksa; bila tidak muat, cetak/finalisasi dari UI meminta catatan diringkas.
 - Dokumen final versi lama memakai snapshot lama. Draf lama harus dibuka dan disimpan ulang sebelum finalisasi, sehingga memakai aturan v3. Tidak ada perubahan skema database untuk data perjalanan karena disimpan sebagai JSON.
 
-Validasi: `scripts/verify-v3.mjs`, `scripts/verify-api-v3.mjs`, serta regresi aturan v2/legacy. Halaman `/qa-print` lokal memeriksa seluruh 8 template, termasuk 6 template aktif dengan dua catatan.
+Validasi: `scripts/verify-creation.mjs`, `scripts/verify-api-creation.mjs`, `scripts/verify-v3.mjs`, `scripts/verify-api-v3.mjs`, serta regresi aturan v2/legacy. Halaman `/qa-print` lokal memeriksa seluruh 8 template, termasuk 6 template aktif dengan dua catatan.
 
 ## Arsip perhitungan v2 (29 Oktober 2026)
 
@@ -85,7 +85,8 @@ PDF dihasilkan dari canvas resolusi tinggi (raster), bukan formulir PDF yang dap
 
 - Cloudflare D1: pegawai, tarif, unit, draf, SPPD, snapshot final, anggota, nomor urut, dan audit.
 - Final menyimpan identitas/rekening, tarif, perhitungan, penandatangan, nama perusahaan, dan versi template. Perubahan master tidak menghitung ulang arsip.
-- Nomor diberikan secara atomik saat finalisasi; permintaan berulang tidak mengonsumsi nomor kedua. Konflik revisi draf ditolak.
+- Form menampilkan saran nomor otomatis dari penghitung tahun surat. HC dapat mengubah nomor lengkap atau kembali ke otomatis. Nomor manual disimpan dalam draf, diperiksa unik saat finalisasi, dan dicetak pada kedua lembar. Nomor manual yang mengikuti pola aplikasi menaikkan penghitung hingga nomor itu; nomor otomatis berikutnya meneruskan urutan. Finalisasi atomik dan permintaan berulang tidak mengonsumsi nomor kedua. Konflik revisi draf ditolak.
+- Pencarian pegawai mendukung beberapa kata lintas nama, NPP, jabatan, dan unit, tanpa membedakan huruf besar/kecil. Daftar pegawai memakai halaman 50 baris. Pencarian peserta menampilkan identitas lengkap, mendukung keyboard, dan mengecualikan peserta terpilih serta pegawai nonaktif.
 - Admin membatalkan dengan alasan. Nomor dan data tetap tersimpan; salin dokumen batal untuk membuat pengganti.
 - Rekap hanya menjumlahkan Final, berdasarkan tanggal berangkat. Draf/batal dikecualikan. Ekspor XLSX memakai snapshot final dan string aman, bukan rumus.
 - Cadangan R2 otomatis pada kunjungan pertama setiap hari serta tombol manual. Ini **bukan cron saat website tidak dikunjungi**. Unduh cadangan dari Pengaturan untuk penyimpanan internal; pemulihan memerlukan validasi pengelola teknis.

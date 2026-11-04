@@ -15,7 +15,7 @@ async function handle(req:Request){
   if(path[0]==='maps'&&method==='GET'){output=await mapRequest(path[1],url);
   }else if(path[0]==='bootstrap'&&method==='GET'){
    const s=await settings();await autoBackup(c.email);
-   output={user:c,settings:s,employees:await rows(EMPLOYEE_SQL+' ORDER BY name'),offices:await rows('SELECT id,name,address,lat,lng,place_id AS placeId FROM offices ORDER BY name'),tariffs:await rows(TARIFF_SQL+' ORDER BY scenario,criterion,valid_from'),trips:(await rows(TRIP_SQL+' ORDER BY updated_at DESC')).map(parseTrip),members:c.role==='admin'?await rows("SELECT email,name,role,active,EXISTS(SELECT 1 FROM auth_account WHERE user_id=members.user_id AND provider_id='credential') AS hasLogin FROM members ORDER BY name"):[],audit:c.role==='admin'?await rows('SELECT * FROM audit ORDER BY at DESC LIMIT 100'):[]};
+   output={user:c,settings:s,numberCounters:await rows<{year:string;value:number}>('SELECT year,value FROM counters'),employees:await rows(EMPLOYEE_SQL+' ORDER BY name'),offices:await rows('SELECT id,name,address,lat,lng,place_id AS placeId FROM offices ORDER BY name'),tariffs:await rows(TARIFF_SQL+' ORDER BY scenario,criterion,valid_from'),trips:(await rows(TRIP_SQL+' ORDER BY updated_at DESC')).map(parseTrip),members:c.role==='admin'?await rows("SELECT email,name,role,active,EXISTS(SELECT 1 FROM auth_account WHERE user_id=members.user_id AND provider_id='credential') AS hasLogin FROM members ORDER BY name"):[],audit:c.role==='admin'?await rows('SELECT * FROM audit ORDER BY at DESC LIMIT 100'):[]};
   }else if(path[0]==='setup'&&method==='POST'){admin(c);output=await setup(body,c.email);
   }else if(path[0]==='employees'){
    admin(c);

@@ -27,7 +27,9 @@ eq(calculate({...trip(),region:'I'},[employee],tariffs,true).errors.some(e=>e.in
 d=trip();d.participants[0].intercityOverride=0;eq(calculate(d,[employee],tariffs,true).participants[0].intercity,0);d.participants[0].intercityOverride=null;eq(calculate(d,[employee],tariffs,true).participants[0].intercity,400000);
 for(const patch of [{destination:'Tujuan baru'},{originOfficeId:'unit-baru'},{destinationLat:-3.4},{originLng:115}]){const changed=patchTrip(trip(),patch);eq(changed.manualDistanceKm,null);eq(changed.region,'');eq(changed.distanceReason,'');}
 eq(patchTrip(trip(),{paidDays:5}).nights,4);eq(patchTrip(trip(),{note1:'Uji catatan'}).manualDistanceKm,200);
-eq(printedNotes({note1:'Rapat koordinasi.',note2:'Biaya dibebankan pada unit asal.'}),[{label:'Catatan 1',text:'Rapat koordinasi.'},{label:'Catatan 2',text:'Biaya dibebankan pada unit asal.'}]);eq(printedNotes({note1:'',note2:'',note:'RAHASIA INTERNAL'}),[]);
+for(const id of ['sppd-dp','sppd-lp'])eq(printedNotes({note1:'Rapat koordinasi.',note2:'Biaya dibebankan pada unit asal.'},id),[{label:'Catatan 1',text:'Rapat koordinasi.'}]);
+for(const id of ['payment-dp-general','payment-dp-education','payment-lp-general','payment-lp-education'])eq(printedNotes({note1:'Rapat koordinasi.',note2:'Biaya dibebankan pada unit asal.'},id),[{label:'Catatan 2',text:'Biaya dibebankan pada unit asal.'}]);
+eq(printedNotes({note1:'',note2:'',note:'RAHASIA INTERNAL'},'sppd-lp'),[]);
 for(const id of ['sppd-dp','sppd-lp','payment-dp-general','payment-dp-education','payment-lp-general','payment-lp-education']){const area=printNotesArea(id);eq(area.height>70,true);eq(area.width>300,true);}
 const old={...trip(),costVersion:2,nights:0,note1:'Tetap tersimpan',participants:[{...trip().participants[0],intercity:500000,allowanceOverride:123456}]},converted=normalizeDraft(old);eq(converted.costVersion,3);eq(converted.nights,2);eq(converted.note1,'Tetap tersimpan');eq(converted.participants[0].intercityOverride,500000);eq(converted.participants[0].allowanceOverride,123456);
 eq(normalizeDraft({...old,region:'I'}).region,'IV');eq(normalizeDraft({...old,manualDistanceKm:100,region:'VI'}).region,'VI');
