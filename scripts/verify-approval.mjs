@@ -1,0 +1,32 @@
+import {build} from 'esbuild';
+import assert from 'node:assert/strict';
+await build({entryPoints:['src/lib/approval.ts'],bundle:true,platform:'node',format:'esm',outfile:'.sites-runtime/approval.mjs'});
+const {APPROVAL_ENABLED,emptyApprovalPreparation,validateApprovalPreparation,planApprovalTransition}=await import('../.sites-runtime/approval.mjs');
+let checks=0;const eq=(actual,expected)=>{assert.deepEqual(actual,expected);checks++;},reject=fn=>{assert.throws(fn);checks++;};
+const emails=['maker@sppd.test','checker@sppd.test','approver@sppd.test'];
+eq(APPROVAL_ENABLED,false);eq(emptyApprovalPreparation().enabled,false);
+eq(validateApprovalPreparation({revision:0},emails).errors,[]);
+const prepared=validateApprovalPreparation({revision:0,checkerEmail:' Checker@SPPD.test ',approverEmail:emails[2],notes:' Rancangan '},emails);
+eq(prepared.errors,[]);eq(prepared.checkerEmail,emails[1]);eq(prepared.notes,'Rancangan');
+for(const patch of [{enabled:true},{enabled:'false'},{mode:'active'},{checkerEmail:emails[1],approverEmail:emails[1]},{checkerEmail:'unknown@sppd.test'},{revision:-1},{revision:1.5},{notes:'A'.repeat(1001)}])eq(validateApprovalPreparation({revision:0,...patch},emails).errors.length>0,true);
+const initial={state:'draft',makerEmail:emails[0],checkerEmail:emails[1],approverEmail:emails[2],submittedRevision:null,checkedRevision:null,approvedRevision:null};
+const transition=(review,action,actor,revision=1,comment='')=>planApprovalTransition(review,action,actor,revision,comment,'2026-11-04T00:00:00Z');
+const submitted=transition(initial,'submit',emails[0]);eq(initial.state,'draft');eq(submitted.review.state,'pending_check');eq(submitted.review.submittedRevision,1);eq(submitted.event.actorEmail,emails[0]);
+const checked=transition(submitted.review,'check',emails[1]);eq(checked.review.state,'pending_approval');eq(checked.review.checkedRevision,1);
+const approved=transition(checked.review,'approve',emails[2]);eq(approved.review.state,'approved');eq(approved.review.approvedRevision,1);
+eq(transition(approved.review,'finalize',emails[0]).review.state,'final');
+for(const [review,action,actor] of [[initial,'approve',emails[2]],[initial,'finalize',emails[0]],[submitted.review,'check',emails[0]],[submitted.review,'approve',emails[2]],[checked.review,'approve',emails[1]],[approved.review,'finalize',emails[2]]])reject(()=>transition(review,action,actor));
+for(const [review,action,actor]of [[submitted.review,'check',emails[1]],[checked.review,'approve',emails[2]],[approved.review,'finalize',emails[0]]])reject(()=>transition(review,action,actor,2));
+for(const action of ['return','reject']){
+ reject(()=>transition(submitted.review,action,emails[1]));
+ const decision=transition(submitted.review,action,emails[1],1,' Periksa rekening. ');eq(decision.event.comment,'Periksa rekening.');eq(decision.review.state,action==='return'?'returned':'rejected');
+ eq(decision.review.approvedRevision,null);
+ if(action==='return'){const revised=transition(decision.review,'revise',emails[0],2);eq(revised.review.submittedRevision,null);eq(transition(revised.review,'submit',emails[0],2).review.submittedRevision,2);}else reject(()=>transition(decision.review,'submit',emails[0],2));
+}
+const revised=transition(approved.review,'revise',emails[0],2);eq(revised.review.state,'draft');eq(revised.review.checkedRevision,null);eq(revised.review.approvedRevision,null);
+reject(()=>transition(revised.review,'finalize',emails[0],2));
+reject(()=>transition({...initial,checkerEmail:emails[0]},'submit',emails[0]));
+reject(()=>transition({...initial,approverEmail:emails[1]},'submit',emails[0]));
+reject(()=>transition(initial,'submit',emails[0],0));
+reject(()=>transition(initial,'submit',emails[0],1,'A'.repeat(1001)));
+console.log(`${checks} pemeriksaan rancangan checker/approval lulus; aktivasi tetap nonaktif.`);

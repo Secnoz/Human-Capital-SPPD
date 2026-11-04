@@ -1,3 +1,4 @@
+import {approvalPreparation,saveApprovalPreparation} from '../../../src/lib/approval-server';
 import {mapRequest,providerUrl,MAP_DEFAULTS} from '../../../src/lib/maps-server';
 import {saveAccount} from '../../../src/lib/accounts';
 import {cleanupDummyEmployees} from '../../../src/lib/dummy-cleanup';
@@ -12,7 +13,10 @@ async function handle(req:Request){
   const mutating=!['GET','HEAD'].includes(method);if(mutating){const origin=req.headers.get('origin');if(origin&&origin!==url.origin)throw new HttpError(403,'Asal permintaan tidak diizinkan.');if(!req.headers.get('content-type')?.includes('application/json'))throw new HttpError(415,'Gunakan format JSON.');}
   let body:Record<string,unknown>={};if(mutating&&method!=='DELETE'){const raw=await req.text();if(raw.length>2_000_000)throw new HttpError(413,'Data terlalu besar.');try{body=JSON.parse(raw);}catch{throw new HttpError(400,'Data JSON tidak valid.');}}
   let output:unknown;
-  if(path[0]==='maps'&&method==='GET'){output=await mapRequest(path[1],url);
+  if(path[0]==='approval'){
+   admin(c);if(path[1]!=='preparation'||path.length!==2)throw new HttpError(404,'Pengaturan persetujuan tidak ditemukan.');
+   if(method==='GET')output=await approvalPreparation();else if(method==='PATCH')output=await saveApprovalPreparation(body,c.email);else throw new HttpError(405,'Gunakan GET atau PATCH untuk rancangan persetujuan.');
+  }else if(path[0]==='maps'&&method==='GET'){output=await mapRequest(path[1],url);
   }else if(path[0]==='bootstrap'&&method==='GET'){
    const s=await settings();await autoBackup(c.email);
    output={user:c,settings:s,numberCounters:await rows<{year:string;value:number}>('SELECT year,value FROM counters'),employees:await rows(EMPLOYEE_SQL+' ORDER BY name'),offices:await rows('SELECT id,name,address,lat,lng,place_id AS placeId FROM offices ORDER BY name'),tariffs:await rows(TARIFF_SQL+' ORDER BY scenario,criterion,valid_from'),trips:(await rows(TRIP_SQL+' ORDER BY updated_at DESC')).map(parseTrip),members:c.role==='admin'?await rows("SELECT email,name,role,active,EXISTS(SELECT 1 FROM auth_account WHERE user_id=members.user_id AND provider_id='credential') AS hasLogin FROM members ORDER BY name"):[],audit:c.role==='admin'?await rows('SELECT * FROM audit ORDER BY at DESC LIMIT 100'):[]};
@@ -36,6 +40,7 @@ async function handle(req:Request){
    admin(c);output=await saveAccount(body,c);
   }else if(path[0]==='trips'){
    const id=path[1],action=path[2];
+   if(id&&['submit','check','approve','return','reject','revise'].includes(action||''))throw new HttpError(409,'Checker dan approval masih tahap persiapan. Proses persetujuan belum diaktifkan.');
    if(id&&action==='finalize'&&method==='POST'){output=await finalize(id,Number(body.revision),c.email);
    }else if(id&&action==='cancel'&&method==='POST'){admin(c);const reason=text(body.reason,500);if(!reason)throw new HttpError(400,'Alasan pembatalan wajib diisi.');const result=await db().prepare("UPDATE trips SET status='cancelled',cancel_reason=?,updated_at=?,revision=revision+1 WHERE id=? AND status='final'").bind(reason,new Date().toISOString(),id).run();if(!result.meta.changes)throw new HttpError(409,'Hanya SPPD Final yang dapat dibatalkan.');await log(c.email,'trip.cancelled',id,{reason});output=await tripById(id);
    }else if(id&&method==='GET'){output=await tripById(id);

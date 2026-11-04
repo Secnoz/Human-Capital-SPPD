@@ -133,3 +133,7 @@ Hal yang memerlukan data perusahaan: data pegawai/rekening terverifikasi, alamat
 Pembaruan ini menambahkan 100 pegawai sintetis, DM001–DM100, dengan 23 jabatan dari 10 kriteria tarif. Nama, unit, penerima, dan rekening merupakan data uji. Rekening disimpan sebagai teks dengan nol awal. Pegawai berstatus aktif agar dapat dipilih saat mencoba membuat SPPD.
 
 Dataset berada di `src/data/dummy-employees.ts`. Worker memasukkannya satu kali ke D1 dalam transaksi bersama penanda `__seed_dummy_employees_100_v1` dan catatan audit. Proses ini tidak menimpa nomor pegawai atau ID yang sudah ada. Setelah penanda tersimpan, kunjungan berikutnya tidak mengulang impor, termasuk bila pegawai dummy telah diedit atau dihapus. Data lokal dan produksi tetap terpisah. Tidak ada perubahan pengaturan, tarif, nomor SPPD, atau dokumen perjalanan.
+
+## Persiapan checker dan approval
+
+Menu Pengaturan menampilkan rancangan **Checker & persetujuan** dengan status **Belum aktif**. Admin dapat menyimpan calon checker, calon approver, dan catatan alur; penyimpanan ini belum memberikan kewenangan persetujuan. Versi rancangan dan perubahan tercatat dalam audit. Finalisasi langsung tetap berjalan. Model urutan dan aturan pemeriksaan tersedia serta diuji, sementara pengajuan dan keputusan operasional belum diaktifkan. Detail batas implementasi dan keputusan yang diperlukan sebelum aktivasi ada di [docs/checker-approval.md](docs/checker-approval.md).
