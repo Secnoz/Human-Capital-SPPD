@@ -1,5 +1,6 @@
 import {mapRequest,providerUrl,MAP_DEFAULTS} from '../../../src/lib/maps-server';
 import {saveAccount} from '../../../src/lib/accounts';
+import {cleanupDummyEmployees} from '../../../src/lib/dummy-cleanup';
 import { env } from 'cloudflare:workers';
 import { context,admin,db,rows,one,settings,setup,log,text,cleanData,validEmployee,employeeStatement,tripById,finalize,backup,autoBackup,HttpError,EMPLOYEE_SQL,TARIFF_SQL,TRIP_SQL,parseTrip } from '../../../src/lib/server';
 import { calculate,validDate,SCENARIOS,type Employee,type Tariff } from '../../../src/lib/domain';
@@ -18,7 +19,9 @@ async function handle(req:Request){
   }else if(path[0]==='setup'&&method==='POST'){admin(c);output=await setup(body,c.email);
   }else if(path[0]==='employees'){
    admin(c);
-   if(method==='POST'&&path[1]==='import'){
+   if(method==='POST'&&path[1]==='cleanup-dummy'){
+    output=await cleanupDummyEmployees(body.ids,c.email,body.dryRun===true);
+   }else if(method==='POST'&&path[1]==='import'){
     if(!Array.isArray(body.rows)||body.rows.length>2000)throw new HttpError(400,'Impor maksimal 2.000 pegawai.');const list=body.rows.map((r:Record<string,unknown>)=>validEmployee(r)),seen=new Set<string>();const current=await rows<Employee>(EMPLOYEE_SQL);
     for(const e of list){if(seen.has(e.employeeNo)||current.some(x=>x.employeeNo===e.employeeNo))throw new HttpError(400,`Nomor pegawai ${e.employeeNo} sudah ada atau ganda.`);seen.add(e.employeeNo);}
     await db().batch(list.map(employeeStatement));await log(c.email,'employees.imported','employees',{count:list.length});output={count:list.length};
