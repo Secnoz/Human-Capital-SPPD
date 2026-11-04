@@ -77,7 +77,7 @@ Delapan aset template tersanitasi menyimpan geometri native PDF hasil cetak Exce
 
 SPPD berbeda untuk MD/DP/LP; Permintaan Uang memiliki lima varian MD Umum, DP Umum/Pendidikan, LP Umum/Pendidikan. Kapasitas MD 8 peserta; DP/LP 9 peserta. Slot kosong benar-benar kosong. Salah lookup, jumlah tiga baris, data biaya tersembunyi, kode rekening pecahan, dan tanggal rusak pada workbook lama tidak direplikasi.
 
-Perbaikan yang disengaja: uraian perjalanan DP/LP di sel gabung C25:E25 pada sumber terpotong. Renderer meneruskan teks ke sel kosong pada **baris yang sama**, tanpa memindahkan garis, judul, atau tanda tangan. Teks lain yang melebihi ruang akan memblokir finalisasi/unduhan sampai diringkas.
+Perbaikan yang disengaja: uraian perjalanan DP/LP di sel gabung C25:E25 pada sumber terpotong. Renderer meneruskan teks ke sel kosong pada **baris yang sama**, tanpa memindahkan garis, judul, atau tanda tangan. Nama, nama penerima, jabatan, dan unit peserta yang panjang dibungkus dengan tinggi baris menyesuaikan ruang tabel peserta; font dapat turun hingga 8 pt. Seluruh kolom peserta tetap sejajar dan batas tabel tidak berubah. Isian pendek mempertahankan tata letak asli. Bila teks tetap tidak muat, finalisasi/unduhan diblokir; periksa isian atau pisahkan peserta ke dokumen lain.
 
 PDF dihasilkan dari canvas resolusi tinggi (raster), bukan formulir PDF yang dapat diedit atau teks yang bisa dipilih. Gunakan Windows dengan **Calibri dan Arial** dari Microsoft Office untuk hasil visual sesuai master. Font berlisensi tidak disalin ke server. Pada komputer tanpa font itu, fallback browser dapat berbeda. Geometri telah diuji; belum ada klaim perbandingan pixel identik pada semua printer/perangkat.
 

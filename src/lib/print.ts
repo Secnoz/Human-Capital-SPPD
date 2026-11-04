@@ -35,14 +35,65 @@ function renderNotes(ctx:CanvasRenderingContext2D,data:TripData,id:string,issues
  ctx.restore();return layout;
 }
 const moneyNumber=(n:number,format:string)=>n===0&&format.includes('*')?'-':new Intl.NumberFormat('id-ID',{minimumFractionDigits:format.includes('0.00')||format.includes('0,00')?2:0,maximumFractionDigits:format.includes('0.00')||format.includes('0,00')?2:0}).format(n);
+const cellFont=(t:Template,s:Style)=>t.fontPrintSizesPt[String(s.font.sizePt)]||s.font.sizePt*t.fontScaleFallback;
+const fontCss=(s:Style,size:number)=>`${s.font.italic?'italic ':''}${s.font.bold?'bold ':''}${size}px "${s.font.family}", Arial, sans-serif`;
+function wrapLines(ctx:CanvasRenderingContext2D,text:string,width:number){
+ const lines:string[]=[];let current='';
+ for(const word of text.split(/\s+/).filter(Boolean)){
+  if(ctx.measureText(word).width>width){
+   if(current){lines.push(current);current='';}
+   for(const character of word){if(current&&ctx.measureText(current+character).width>width){lines.push(current);current='';}current+=character;}
+  }else if(current&&ctx.measureText(current+' '+word).width>width){lines.push(current);current=word;}else current=current?current+' '+word:word;
+ }
+ if(current)lines.push(current);return lines.length?lines:[''];
+}
+interface ParticipantFit{box:Box;fontSize:number;wrap:boolean}
+function fitParticipantRows(ctx:CanvasRenderingContext2D,t:Template,values:ReturnType<typeof printValues>){
+ const empty=new Map<string,ParticipantFit>();
+ const cells=t.cells.filter(c=>c.binding?.startsWith('participants.')&&(!c.mergeAnchor||c.mergeAnchor===c.address));
+ if(!cells.length||!values.participants.length)return empty;
+ const textFor=(c:Cell)=>{const v=resolve(values,c.binding!);return typeof v==='number'&&c.format==='money'?moneyNumber(v,styles[c.style].numberFormat):String(v??'');};
+ const boxFor=(c:Cell)=>c.textBoxPt||c.pageBoxPt;
+ const flexible=(c:Cell)=>/\.(?:name|creditName|position|unit)$/.test(c.binding!);
+ ctx.save();
+ const needsFit=cells.some(c=>{if(!flexible(c))return false;ctx.font=fontCss(styles[c.style],cellFont(t,styles[c.style]));return ctx.measureText(textFor(c)).width>boxFor(c).width-3+.8;});
+ if(!needsFit){ctx.restore();return empty;}
+ const top=Math.min(...cells.map(c=>boxFor(c).y)),bottom=Math.max(...cells.map(c=>boxFor(c).y+boxFor(c).height));
+ const isSppd=t.id.startsWith('sppd');
+ for(let attempt=0;attempt<=20;attempt++){
+  const scale=1-attempt*.025,plan=new Map<string,ParticipantFit>();let cursor=top;
+  for(let i=0;i<values.participants.length;i++){
+   const row=cells.filter(c=>c.binding!.startsWith(`participants.${i}.`));if(!row.length)continue;
+   const measured=row.map(c=>{
+    const style=styles[c.style],original=cellFont(t,style),size=Math.max(Math.min(8,original),original*scale),box=boxFor(c);
+    ctx.font=fontCss(style,size);
+    const lines=flexible(c)?wrapLines(ctx,textFor(c),box.width-3):[textFor(c)];
+    return{cell:c,box,size,height:lines.length*size*1.2+.6};
+   });
+   const rowTop=Math.min(...measured.map(m=>m.box.y)),rowBottom=Math.max(...measured.map(m=>m.box.y+m.box.height));
+   const position=measured.find(m=>m.cell.binding!.endsWith('.position')),unit=measured.find(m=>m.cell.binding!.endsWith('.unit'));
+   const height=Math.max((rowBottom-rowTop)*scale,...measured.filter(m=>!isSppd||!m.cell.binding!.endsWith('.unit')).map(m=>m.height),isSppd?(position?.height||0)+(unit?.height||0):0);
+   for(const m of measured){
+    const isUnit=isSppd&&m.cell.binding!.endsWith('.unit');
+    const y=cursor+(isUnit?position?.height||0:0),boxHeight=isUnit?unit!.height:isSppd&&m===position?position.height:height;
+    plan.set(m.cell.binding!,{box:{...m.box,y,height:boxHeight},fontSize:m.size,wrap:flexible(m.cell)});
+   }
+   cursor+=height;
+  }
+  if(cursor<=bottom+.01){ctx.restore();return plan;}
+ }
+ ctx.restore();return empty;
+}
+function fieldLabel(binding:string){const match=/^participants\.(\d+)\.(.+)$/.exec(binding);if(!match)return binding;const labels:Record<string,string>={position:'Jabatan',unit:'Unit kerja',name:'Nama',creditName:'Nama penerima',accountNumber:'Nomor rekening',employeeNumber:'Nomor pegawai'};return`${labels[match[2]]||match[2]} peserta ${Number(match[1])+1}`;}
 export async function renderDocument(trip:TripRecord,settings:Settings,id:string,scale=2.8){
  const template=templates[id];if(!template)throw new Error('Versi template dokumen tidak tersedia.');
  await document.fonts.ready;const canvas=document.createElement('canvas');canvas.width=Math.round(template.page.widthPt*scale);canvas.height=Math.round(template.page.heightPt*scale);const ctx=canvas.getContext('2d')!;ctx.scale(scale,scale);ctx.fillStyle='#fff';ctx.fillRect(0,0,template.page.widthPt,template.page.heightPt);const values=printValues(trip,settings,template),issues:string[]=[];
+ const participantFit=fitParticipantRows(ctx,template,values);
  for(const r of template.borderRectsPt){ctx.fillStyle=r.color||'#000';ctx.fillRect(r.x,r.y,r.width,r.height);}
  for(const cell of template.cells){
   if(!cell.binding&&cell.text==null)continue;
   if(cell.mergeAnchor&&cell.mergeAnchor!==cell.address)continue;
-  const s=styles[cell.style],fontSize=template.fontPrintSizesPt[String(s.font.sizePt)]||s.font.sizePt*template.fontScaleFallback;
+  const s=styles[cell.style],fit=cell.binding?participantFit.get(cell.binding):undefined,fontSize=fit?.fontSize??cellFont(template,s);
   let value=cell.binding?resolve(values,cell.binding):cell.text;
   if(value==null||value==='')continue;if(!cell.binding&&value==='BANK KALSEL')value=trip.data.company||settings.company;
   const numeric=typeof value==='number',text=numeric&&cell.format==='money'?moneyNumber(value as number,s.numberFormat):String(value);
@@ -51,19 +102,20 @@ export async function renderDocument(trip:TripRecord,settings:Settings,id:string
   if(!cell.binding&&cell.referenceStaticLines?.length&&String(value)===cell.text){for(const line of cell.referenceStaticLines){for(const word of line.words?.length?line.words:[line]){ctx.fillText(word.text,word.xPt,word.baselinePt);if(s.font.underline){const width=ctx.measureText(word.text).width;ctx.fillRect(word.xPt,word.baselinePt+fontSize*.13,width,Math.max(.4,fontSize*.05));}}}continue;}
   // Legacy C25:E25 clips the itinerary even for ordinary dates. Continue into
   // the empty cells on the same line; keep all printed anchors and rules fixed.
-  const original=cell.textBoxPt||cell.pageBoxPt;
+  const original=fit?.box||cell.textBoxPt||cell.pageBoxPt;
   const box=cell.binding==='document.itineraryText'&&id!=='payment-md-general'?{...original,width:template.page.widthPt-50.8-original.x}:original,padding=1.5,width=box.width-2*padding,align=numeric&&s.numberFormat.includes('*')?'right':s.alignment.horizontal==='general'?(numeric?'right':'left'):s.alignment.horizontal;
-  const words=text.split(/\s+/),lines:string[]=[];let current='';if(s.alignment.wrapText){for(const word of words){const next=current?current+' '+word:word;if(current&&ctx.measureText(next).width>width){lines.push(current);current=word;}else current=next;}if(current)lines.push(current);}else lines.push(text);
+  const words=text.split(/\s+/),lines:string[]=[];let current='';if(fit?.wrap){lines.push(...wrapLines(ctx,text,width));}else if(s.alignment.wrapText){for(const word of words){const next=current?current+' '+word:word;if(current&&ctx.measureText(next).width>width){lines.push(current);current=word;}else current=next;}if(current)lines.push(current);}else lines.push(text);
   const lineHeight=fontSize*1.2;const tooWide=lines.some(line=>ctx.measureText(line).width>width+.8),tooTall=lines.length*lineHeight>box.height+fontSize*.25;
-  if(cell.binding&&(tooWide||tooTall))issues.push(`${cell.binding} tidak muat pada ${id} (${cell.address}).`);
+  if(cell.binding&&(tooWide||tooTall))issues.push(`${fieldLabel(cell.binding)} tidak muat pada ${id} (${cell.address}). Periksa isian atau kurangi peserta dalam dokumen.`);
   let baseline=cell.referenceBaselinesPt?.[0]??box.y+box.height-(box.height-fontSize)*.5-fontSize*.18;if(lines.length>1)baseline=s.alignment.vertical==='top'?box.y+fontSize:box.y+(box.height-lines.length*lineHeight)/2+fontSize;
+  if(fit)baseline=box.y+.3+fontSize;
   // Clip only preview; finalization rejects any overflowing dynamic text.
   ctx.save();ctx.beginPath();ctx.rect(box.x,box.y,box.width,box.height);ctx.clip();
   lines.forEach((line,i)=>{const measured=ctx.measureText(line).width,x=align==='right'?box.x+box.width-padding-measured:align==='center'?box.x+(box.width-measured)/2:box.x+padding,y=baseline+i*lineHeight;ctx.fillText(line,x,y);if(s.font.underline)ctx.fillRect(x,y+fontSize*.13,measured,Math.max(.4,fontSize*.05));});ctx.restore();
  }
  const notes=renderNotes(ctx,trip.data,id,issues);
  if(trip.status!=='final'){ctx.save();ctx.translate(template.page.widthPt/2,template.page.heightPt/2);ctx.rotate(-Math.PI/7);ctx.font='bold 64px Arial';ctx.fillStyle=trip.status==='cancelled'?'rgba(180,35,35,.18)':'rgba(65,85,120,.13)';ctx.textAlign='center';ctx.fillText(trip.status==='cancelled'?'BATAL':'DRAF',0,0);ctx.restore();}
- return{canvas,widthPt:template.page.widthPt,heightPt:template.page.heightPt,issues,notes};
+ return{canvas,widthPt:template.page.widthPt,heightPt:template.page.heightPt,issues,notes,participantLayout:[...participantFit].map(([binding,fit])=>({binding,...fit}))};
 }
 function concat(parts:Uint8Array[]){const out=new Uint8Array(parts.reduce((n,p)=>n+p.length,0));let at=0;for(const p of parts){out.set(p,at);at+=p.length;}return out;}
 // A4 PDF with high-resolution JPEG pages. Browser uses locally installed Office fonts.
