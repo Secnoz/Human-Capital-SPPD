@@ -2,11 +2,11 @@ import {build} from 'esbuild';
 import assert from 'node:assert/strict';
 await build({entryPoints:['src/lib/domain.ts'],bundle:true,platform:'node',format:'esm',outfile:'.sites-runtime/v3-domain.mjs'});
 await build({entryPoints:['src/lib/print.ts'],bundle:true,platform:'node',format:'esm',outfile:'.sites-runtime/v3-print.mjs'});
-const{calculate,defaultTrip,seedTariffs,nightsFromDays,patchTrip,intercityReference,normalizeDraft,hasPositionAdjustment}=await import('../.sites-runtime/v3-domain.mjs?'+Date.now());
+const{COST_VERSION,calculate,defaultTrip,seedTariffs,nightsFromDays,patchTrip,intercityReference,normalizeDraft,hasPositionAdjustment}=await import('../.sites-runtime/v3-domain.mjs?'+Date.now());
 const{printedNotes,printNotesArea}=await import('../.sites-runtime/v3-print.mjs?'+Date.now());
 let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++;};
 const employee={id:'e1',employeeNo:'DM001',name:'Pegawai Uji',position:'Pegawai Clerical (Pegawai/Capeg)',unit:'Unit Uji',criterion:8,creditName:'Pegawai Uji',bankAccount:'000000000001',active:1},tariffs=seedTariffs('2026-01-01');
-const trip=(scenario='dalam_provinsi',days=3)=>({...defaultTrip(scenario),departureDate:'2026-11-02',returnDate:'2026-11-04',originOfficeId:'unit',origin:'Unit Uji',destination:'Tujuan Uji',reason:'Uji perhitungan',transport:'Mobil',paidDays:days,nights:nightsFromDays(days),dayReason:'Penetapan HC',manualDistanceKm:200,region:'IV',distanceReason:'Jarak uji sekali jalan',participants:[{employeeId:employee.id,intercity:0,adjustmentReason:''}]});
+const trip=(scenario='dalam_provinsi',days=3)=>({...defaultTrip(scenario),costVersion:3,departureDate:'2026-11-02',returnDate:'2026-11-04',originOfficeId:'unit',origin:'Unit Uji',destination:'Tujuan Uji',reason:'Uji perhitungan',transport:'Mobil',paidDays:days,nights:nightsFromDays(days),dayReason:'Penetapan HC',manualDistanceKm:200,region:'IV',distanceReason:'Jarak uji sekali jalan',participants:[{employeeId:employee.id,intercity:0,adjustmentReason:''}]});
 for(const scenario of ['dalam_provinsi','luar_provinsi'])for(let criterion=1;criterion<=10;criterion++)for(const days of [1,3,10]){
  const d=trip(scenario,days);d.participants[0].domesticTaxiEnabled=true;const result=calculate(d,[{...employee,criterion}],tariffs,true),rate=tariffs.find(t=>t.scenario===scenario&&t.criterion===criterion);
  eq(result.errors,[]);eq(result.participants[0].cityTaxi,rate.cityTaxi*days);eq(result.participants[0].airport,scenario==='luar_provinsi'?rate.airport:0);eq(result.participants[0].intercity,scenario==='dalam_provinsi'?400000:0);eq(result.total,rate.daily*days+rate.cityTaxi*days+(scenario==='luar_provinsi'?rate.airport:400000));
@@ -26,11 +26,11 @@ eq(intercityReference({...trip(),manualDistanceKm:100,region:''}),null);eq(calcu
 eq(calculate({...trip(),region:'I'},[employee],tariffs,true).errors.some(e=>e.includes('tidak sesuai jarak')),true);
 d=trip();d.participants[0].intercityOverride=0;eq(calculate(d,[employee],tariffs,true).participants[0].intercity,0);d.participants[0].intercityOverride=null;eq(calculate(d,[employee],tariffs,true).participants[0].intercity,400000);
 for(const patch of [{destination:'Tujuan baru'},{originOfficeId:'unit-baru'},{destinationLat:-3.4},{originLng:115}]){const changed=patchTrip(trip(),patch);eq(changed.manualDistanceKm,null);eq(changed.region,'');eq(changed.distanceReason,'');}
-eq(patchTrip(trip(),{paidDays:5}).nights,4);eq(patchTrip(trip(),{note1:'Uji catatan'}).manualDistanceKm,200);
+eq(patchTrip(trip(),{returnDate:'2026-11-06'}).nights,4);eq(patchTrip(trip(),{note1:'Uji catatan'}).manualDistanceKm,200);
 for(const id of ['sppd-dp','sppd-lp'])eq(printedNotes({note1:'Rapat koordinasi.',note2:'Biaya dibebankan pada unit asal.'},id),[{label:'Catatan 1',text:'Rapat koordinasi.'}]);
 for(const id of ['payment-dp-general','payment-dp-education','payment-lp-general','payment-lp-education'])eq(printedNotes({note1:'Rapat koordinasi.',note2:'Biaya dibebankan pada unit asal.'},id),[{label:'Catatan 2',text:'Biaya dibebankan pada unit asal.'}]);
 eq(printedNotes({note1:'',note2:'',note:'RAHASIA INTERNAL'},'sppd-lp'),[]);
 for(const id of ['sppd-dp','sppd-lp','payment-dp-general','payment-dp-education','payment-lp-general','payment-lp-education']){const area=printNotesArea(id);eq(area.height>70,true);eq(area.width>300,true);}
-const old={...trip(),costVersion:2,nights:0,note1:'Tetap tersimpan',participants:[{...trip().participants[0],intercity:500000,allowanceOverride:123456}]},converted=normalizeDraft(old);eq(converted.costVersion,3);eq(converted.nights,2);eq(converted.note1,'Tetap tersimpan');eq(converted.participants[0].intercityOverride,500000);eq(converted.participants[0].allowanceOverride,123456);
+const old={...trip(),costVersion:2,nights:0,note1:'Tetap tersimpan',participants:[{...trip().participants[0],intercity:500000,allowanceOverride:123456}]},converted=normalizeDraft(old);eq(converted.costVersion,COST_VERSION);eq(converted.nights,2);eq(converted.note1,'Tetap tersimpan');eq(converted.participants[0].intercityOverride,500000);eq(converted.participants[0].allowanceOverride,123456);
 eq(normalizeDraft({...old,region:'I'}).region,'IV');eq(normalizeDraft({...old,manualDistanceKm:100,region:'VI'}).region,'VI');
 console.log(checks+' pemeriksaan revisi v3 lulus: taksi harian, malam otomatis, wilayah/jarak, jabatan master, override, catatan, dan migrasi draf.');

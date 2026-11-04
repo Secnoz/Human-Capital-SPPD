@@ -1,5 +1,5 @@
 import assets from '../data/print-templates.json';
-import { dateLabel,terbilang,COST_VERSION,type TripData,type TripRecord,type Settings } from './domain';
+import { dateLabel,terbilang,type TripData,type TripRecord,type Settings } from './domain';
 
 const templates=assets.templates as unknown as Record<string,Template>;
 const styles=assets.styles as unknown as Record<string,Style>;
@@ -9,7 +9,7 @@ interface Cell{address:string;style:string;pageBoxPt:Box;textBoxPt?:Box;mergeAnc
 interface Template{id:string;page:{widthPt:number;heightPt:number};fontPrintSizesPt:Record<string,number>;fontScaleFallback:number;representativeSuffix?:string;participantSequenceSuffix?:string;cells:Cell[];borderRectsPt:(Box&{color:string})[]}
 export function templateIds(trip:TripRecord){const scenario=trip.data.scenario;return[scenario==='dalam_provinsi'?'sppd-dp':scenario==='luar_provinsi'?'sppd-lp':'sppd',scenario==='dalam_mobil_dinas'?'payment-md-general':`payment-${scenario==='dalam_provinsi'?'dp':'lp'}-${trip.data.purpose==='umum'?'general':'education'}`];}
 export function printValues(trip:TripRecord,settings:Settings,t:Template){
- const d=trip.data,n=d.costVersion===COST_VERSION?String(d.nights):d.nights?String(d.nights):'-',nomor='Nomor: '+(trip.number||'— DRAF');
+ const d=trip.data,n=(d.costVersion||0)>=3?String(d.nights):d.nights?String(d.nights):'-',nomor='Nomor: '+(trip.number||'— DRAF');
  return{document:{number:nomor,authorizingRole:d.commander||settings.commander,originName:d.origin,destinationName:d.destination,purpose:d.reason,paidDays:d.paidDays,nightsDisplay:n,departureDateText:dateLabel(d.departureDate),returnDateText:dateLabel(d.returnDate),transportLabel:d.transport,paymentRepresentative:(d.participants[0]?.employee?.name||'')+(t.representativeSuffix||''),paymentReference:nomor+', '+dateLabel(d.issueDate),itineraryText:`${d.destination} ${d.paidDays} Hari / ${n} Malam,${t.id==='payment-md-general'?' ':''}${dateLabel(d.departureDate)} - ${dateLabel(d.returnDate)}`,issuePlaceDateText:`${d.issueCity}, ${dateLabel(d.issueDate)}`,signatureName:d.signerName||settings.signerName,signatureRole:d.signerPosition||settings.signerPosition,total:trip.total,totalInWords:terbilang(trip.total)},participants:d.participants.map((p,i)=>({name:p.employee?.name||'',employeeNumber:p.employee?.employeeNo||'',accountNumber:p.employee?.bankAccount||'',creditName:p.employee?.creditName||'',position:p.employee?.position||'',unit:p.employee?.unit||'',sequence:String(i+1)+(t.participantSequenceSuffix||''),separator:'/',pocket:p.allowance||0,dailyTaxiTotal:p.cityTaxi||0,airportTaxiTotal:p.airport||0,intercityTotal:p.intercity||0,budgetCode:p.code||'',total:p.total||0}))};
 }
 function resolve(root:unknown,path:string):unknown{return path.split('.').reduce((p,k)=>p!=null?(p as Record<string,unknown>)[k]:undefined,root);}

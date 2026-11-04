@@ -10,7 +10,7 @@ Identitas tampilan mengikuti palet biru, hijau, dan putih yang diberikan penggun
 2. Isi nama penandatangan, tanggal mulai berlaku tarif, dan nomor SPPD terakhir tahun berjalan. Jangan memasukkan tanggal berlaku berdasarkan perkiraan.
 3. Tambahkan unit kerja asal beserta alamatnya di Pengaturan.
 4. Tambahkan atau impor pegawai. Gunakan template Excel aplikasi. Nomor pegawai dan rekening harus berformat **Teks** sebelum diketik, agar nol awal terjaga.
-5. Pilih jenis perjalanan, tanggal, hari dibayar, tujuan, dan peserta. Periksa rincian biaya dan kedua lembar cetak; simpan draf atau finalkan.
+5. Pilih jenis perjalanan, tanggal (hari/malam otomatis), tujuan, dan peserta. Periksa rincian biaya dan kedua lembar cetak; simpan draf atau finalkan.
 6. Unduh PDF dua halaman (SPPD portrait, Permintaan Uang landscape) dan cetak ukuran aktual/100%.
 
 Admin mengelola pegawai, tarif, unit kerja, pengaturan, akun, pembatalan, dan cadangan. Petugas HC membuat draf, finalisasi, cetak, dan rekap. Untuk pengujian ini, halaman login dapat dibuka umum. Data dan API tetap memerlukan sesi akun SPPD aktif. Penguji tidak memerlukan akun ChatGPT. Admin membuat akun melalui **Pengaturan → Akun Human Capital → Tambah akun**. Pendaftaran mandiri ditutup.
@@ -21,17 +21,17 @@ Better Auth 1.7.14 menyimpan akun dan sesi di D1. Kata sandi menggunakan scrypt 
 
 Atur `BETTER_AUTH_SECRET` dan `SPPD_ADMIN_PASSWORD_HASH` sebagai secrets runtime Sites. Hash bootstrap harus menggunakan format scrypt yang sama dengan `src/lib/password.ts`. Worker menambahkan admin sekali dengan `INSERT OR IGNORE`; pembaruan berikutnya tidak mengembalikan kata sandi awal. Jangan menyimpan kata sandi atau secret di source, GitHub, atau bundle browser. Akun ChatGPT dan daftar anggota lama tetap tersimpan, tetapi belum bisa memakai login baru sampai admin menetapkan kata sandi untuknya.
 
-## Revisi aktif v3 (2 November 2026)
+## Revisi aktif v4 (4 November 2026)
 
 - Kolom nominal biaya peserta dan tarif menampilkan awalan **Rp** dan pemisah ribuan saat diketik, misalnya **Rp 1.500.000**. Bisa dikosongkan, diisi 0, atau ditempel dari nominal berformat Rupiah; nilai perhitungan tetap angka Rupiah bulat.
 - Taksi dalam kota otomatis = tarif kota × **hari dibayar**, untuk kedua jenis perjalanan. Pilihan taksi dalam provinsi tetap opsional. Taksi bandara tetap satu kali.
-- Hari dibayar dapat diedit. Malam otomatis = `maksimum(hari dibayar - 1, 0)`, sesuai konfirmasi pengguna. Perbedaan dengan durasi kalender tetap memerlukan alasan. Input angka bisa dikosongkan sementara saat mengetik tanpa memunculkan kembali angka 0.
+- Hari dibayar otomatis = tanggal kembali − tanggal berangkat + 1 (kedua tanggal ikut dihitung). Malam otomatis = `maksimum(hari dibayar - 1, 0)`. Keduanya hanya dapat dibaca; tidak ada isian alasan selisih hari. Tanggal yang belum lengkap menampilkan nilai kosong, tanggal terbalik ditolak saat finalisasi, dan durasi dibatasi 1–366 hari. Server menghitung ulang hari/malam saat menyimpan.
 - Transport antar kota otomatis mengambil nominal wilayah I–VI dari hasil jarak **sekali jalan** atau keputusan wilayah HC. Nominal otomatis sama dengan nilai referensi wilayah pada master dan tidak dikalikan hari. HC tetap dapat mengganti total per peserta, termasuk 0. Jika lokasi berubah, jarak/wilayah sebelumnya dihapus. Tepat 100 km memerlukan pilihan wilayah V atau VI. Bila jarak/wilayah belum tersedia, finalisasi memerlukan isian manual, termasuk 0 bila tidak dibayar.
 - Jabatan peserta mengikuti master dan hanya dapat dibaca. Pilihan **Kriteria biaya** dapat diubah untuk satu peserta dalam SPPD ini tanpa mengubah data induk. Pergantian kriteria menghitung ulang uang saku/taksi dan mengembalikan komponen tersebut ke nilai otomatis. Draf dengan penyesuaian jabatan lama harus dibuka dan disimpan ulang; dokumen yang sudah final tetap memakai snapshot semula.
 - **Catatan 1** dan **Catatan 2** masing-masing maksimal 300 karakter. Catatan 1 hanya dicetak pada Lembar SPPD; Catatan 2 hanya pada Lembar Permintaan Uang. Catatan kosong tidak dicetak. Catatan internal HC tetap terpisah. Teks dibungkus pada area kosong yang telah diperiksa; bila tidak muat, cetak/finalisasi dari UI meminta catatan diringkas.
-- Dokumen final versi lama memakai snapshot lama. Draf lama harus dibuka dan disimpan ulang sebelum finalisasi, sehingga memakai aturan v3. Tidak ada perubahan skema database untuk data perjalanan karena disimpan sebagai JSON.
+- Dokumen final versi lama memakai snapshot lama. Draf lama harus dibuka dan disimpan ulang sebelum finalisasi, sehingga memakai aturan v4. Override biaya dan rekening draf v3 tetap dipertahankan. Kalkulator v2/v3 untuk arsip tetap tersedia; data final tidak dihitung ulang. Tidak ada perubahan skema database untuk data perjalanan karena disimpan sebagai JSON.
 
-Validasi: `scripts/verify-creation.mjs`, `scripts/verify-api-creation.mjs`, `scripts/verify-v3.mjs`, `scripts/verify-api-v3.mjs`, serta regresi aturan v2/legacy. Halaman `/qa-print` lokal memeriksa seluruh 8 template, termasuk 6 template aktif dengan dua catatan.
+Validasi: `scripts/verify-auto-days.mjs`, `scripts/verify-api-auto-days.mjs`, `scripts/verify-creation.mjs`, `scripts/verify-api-creation.mjs`, `scripts/verify-v3.mjs`, `scripts/verify-api-v3.mjs`, serta regresi aturan v2/legacy. Halaman `/qa-print` lokal memeriksa seluruh 8 template, termasuk 6 template aktif dengan dua catatan.
 
 ## Arsip perhitungan v2 (29 Oktober 2026)
 

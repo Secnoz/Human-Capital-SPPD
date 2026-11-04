@@ -17,10 +17,11 @@ export const number=(v:number)=>new Intl.NumberFormat('id-ID').format(v);
 export const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Makassar',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 export function validDate(s:string){if(!/^\d{4}-\d{2}-\d{2}$/.test(s))return false;const d=new Date(s+'T00:00:00Z');return !isNaN(d.getTime())&&d.toISOString().slice(0,10)===s;}
 export function calendarDays(start:string,end:string){return validDate(start)&&validDate(end)?Math.round((Date.parse(end+'T00:00:00Z')-Date.parse(start+'T00:00:00Z'))/86400000)+1:0;}
+export function travelDuration(start:string,end:string){const days=Math.max(0,calendarDays(start,end));return{paidDays:days,nights:nightsFromDays(days)};}
 export function dateLabel(s:string){return validDate(s)?new Intl.DateTimeFormat('id-ID',{day:'numeric',month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(s+'T00:00:00Z')):s;}
 export function terbilang(n:number):string{if(!Number.isSafeInteger(n)||n<0||n>=1e12)throw new Error('Nominal terbilang di luar batas.');const a=['','satu','dua','tiga','empat','lima','enam','tujuh','delapan','sembilan','sepuluh','sebelas'];const s=(v:number):string=>v<12?a[v]:v<20?s(v-10)+' belas':v<100?s(Math.floor(v/10))+' puluh '+s(v%10):v<200?'seratus '+s(v-100):v<1000?s(Math.floor(v/100))+' ratus '+s(v%100):v<2000?'seribu '+s(v-1000):v<1e6?s(Math.floor(v/1000))+' ribu '+s(v%1000):v<1e9?s(Math.floor(v/1e6))+' juta '+s(v%1e6):s(Math.floor(v/1e9))+' miliar '+s(v%1e9);return(n===0?'nol':s(n)).replace(/\s+/g,' ').trim()+' rupiah';}
 export function suggestRegion(m:number){if(!Number.isFinite(m)||m<=0)return null;if(m===100000)return{region:'Perlu penetapan HC',cap:null};if(m<=100000)return{region:'VI',cap:300000};if(m<=150000)return{region:'V',cap:350000};if(m<=250000)return{region:'IV',cap:400000};if(m<=300000)return{region:'III',cap:500000};if(m<=350000)return{region:'II',cap:600000};return{region:'I',cap:700000};}
-export const COST_VERSION=3;
+export const COST_VERSION=4;
 export const PRINT_NOTE_LIMIT=300;
 export const hasPositionAdjustment=(d:Pick<TripData,'participants'>)=>d.participants.some(p=>p.positionOverride!=null||p.positionCriterionOverride!=null);
 export function nightsFromDays(days:number){return Number.isInteger(days)&&days>0?days-1:0;}
@@ -37,9 +38,9 @@ export function patchTrip(d:TripData,p:Partial<TripData>):TripData{
  const locationChanged=(['originOfficeId','originLat','originLng','destination','destinationLat','destinationLng'] as const).some(k=>Object.hasOwn(p,k)&&p[k]!==d[k]);
  if(locationChanged){next.manualDistanceKm=null;next.distanceReason='';next.region='';}
  if(Object.hasOwn(p,'manualDistanceKm')&&!locationChanged){const ref=next.manualDistanceKm!=null?suggestRegion(next.manualDistanceKm*1000):null;next.region=ref?.cap!=null?ref.region:p.region||'';}
- next.costVersion=COST_VERSION;next.nights=nightsFromDays(next.paidDays);return next;
+ next.costVersion=COST_VERSION;Object.assign(next,travelDuration(next.departureDate,next.returnDate));next.dayReason='';return next;
 }
-export function defaultTrip(scenario:Scenario='dalam_provinsi'):TripData{return{costVersion:COST_VERSION,scenario,purpose:'umum',issueDate:today(),issueCity:'Banjarmasin',originOfficeId:'',origin:'',destination:'',reason:'',departureDate:'',returnDate:'',paidDays:1,nights:0,dayReason:'',transport:scenario==='dalam_mobil_dinas'?'Mobil Dinas':scenario==='luar_provinsi'?'Pesawat Terbang dan Taksi':'',participants:[],note:'',note1:'',note2:''};}
+export function defaultTrip(scenario:Scenario='dalam_provinsi'):TripData{return{costVersion:COST_VERSION,scenario,purpose:'umum',issueDate:today(),issueCity:'Banjarmasin',originOfficeId:'',origin:'',destination:'',reason:'',departureDate:'',returnDate:'',paidDays:0,nights:0,dayReason:'',transport:scenario==='dalam_mobil_dinas'?'Mobil Dinas':scenario==='luar_provinsi'?'Pesawat Terbang dan Taksi':'',participants:[],note:'',note1:'',note2:''};}
 export function calculateLegacy(d:TripData,employees:Employee[],tariffs:Tariff[],strict=false){
  const errors:string[]=[],unique=new Set<string>();
  if(!(d.scenario in SCENARIOS))errors.push('Jenis perjalanan tidak valid.');if(!['umum','pendidikan'].includes(d.purpose))errors.push('Pembebanan tidak valid.');if(d.scenario==='dalam_mobil_dinas'&&d.purpose==='pendidikan')errors.push('Template Pendidikan dengan mobil dinas belum ditetapkan.');
@@ -64,9 +65,9 @@ export function calculateLegacy(d:TripData,employees:Employee[],tariffs:Tariff[]
 export function seedTariffs(validFrom:string,includeLegacy=false):Tariff[]{return Object.entries(source.scenarios).filter(([scenario])=>includeLegacy||scenario!=='dalam_mobil_dinas').flatMap(([scenario,s])=>s.tariff_groups.map(g=>({id:crypto.randomUUID(),scenario:scenario as Scenario,criterion:g.id,validFrom,validUntil:null,daily:g.daily_allowance,cityTaxi:g.city_taxi_daily,airport:g.airport_taxi_once||0,note:`Sumber: ${s.source_file}; ${g.source_range}`})));}
 
 export function normalizeDraft(data:TripData):TripData{
- const legacy=data.costVersion!==2;
+ const modern=(data.costVersion||0)>=3,legacy=data.costVersion!==2&&!modern;
  const byDistance=data.manualDistanceKm!=null?suggestRegion(data.manualDistanceKm*1000):null;
- return{...data,costVersion:COST_VERSION,nights:nightsFromDays(data.paidDays),region:byDistance?.cap!=null?byDistance.region:data.region,note1:data.note1||'',note2:data.note2||'',scenario:data.scenario==='dalam_mobil_dinas'?'dalam_provinsi':data.scenario,participants:data.participants.map(p=>({employeeId:p.employeeId,intercity:0,intercityOverride:data.costVersion===COST_VERSION?p.intercityOverride:p.intercity||null,code:p.code,adjustmentReason:p.adjustmentReason||'',domesticTaxiEnabled:legacy&&data.costVersion!==COST_VERSION?false:!!p.domesticTaxiEnabled,allowanceOverride:legacy&&data.costVersion!==COST_VERSION?null:p.allowanceOverride,cityTaxiOverride:legacy&&data.costVersion!==COST_VERSION?null:p.cityTaxiOverride,airportOverride:legacy&&data.costVersion!==COST_VERSION?null:p.airportOverride,criterionOverride:p.criterionOverride??null,creditNameOverride:p.creditNameOverride,bankAccountOverride:p.bankAccountOverride}))};
+ return{...data,costVersion:COST_VERSION,...travelDuration(data.departureDate,data.returnDate),dayReason:'',region:byDistance?.cap!=null?byDistance.region:data.region,note1:data.note1||'',note2:data.note2||'',scenario:data.scenario==='dalam_mobil_dinas'?'dalam_provinsi':data.scenario,participants:data.participants.map(p=>({employeeId:p.employeeId,intercity:0,intercityOverride:modern?p.intercityOverride:p.intercity||null,code:p.code,adjustmentReason:p.adjustmentReason||'',domesticTaxiEnabled:legacy?false:!!p.domesticTaxiEnabled,allowanceOverride:legacy?null:p.allowanceOverride,cityTaxiOverride:legacy?null:p.cityTaxiOverride,airportOverride:legacy?null:p.airportOverride,criterionOverride:p.criterionOverride??null,creditNameOverride:p.creditNameOverride,bankAccountOverride:p.bankAccountOverride}))};
 }
 
 // Version 2 uses editable per-person totals. The legacy calculator is retained
@@ -87,8 +88,8 @@ export function calculateV2(d:TripData,employees:Employee[],tariffs:Tariff[],str
  return{participants,total,calendarDays:base.calendarDays,errors:[...new Set(errors)]};
 }
 
-export function calculate(d:TripData,employees:Employee[],tariffs:Tariff[],strict=false){
- if(d.costVersion!==COST_VERSION)return calculateV2(d,employees,tariffs,strict);
+export function calculateV3(d:TripData,employees:Employee[],tariffs:Tariff[],strict=false){
+ if(d.costVersion!==3)return calculateV2(d,employees,tariffs,strict);
  const errors:string[]=[];
  if(strict&&hasPositionAdjustment(d))errors.push('Penyesuaian jabatan belum digunakan. Buka dan simpan ulang draf untuk mengikuti master pegawai.');
  const effective=employees.map(e=>{const p=d.participants.find(p=>p.employeeId===e.id);if(!p)return{...e};
@@ -116,4 +117,14 @@ export function calculate(d:TripData,employees:Employee[],tariffs:Tariff[],stric
  });
  const total=participants.reduce((sum,p)=>sum+p.total,0);if(!Number.isSafeInteger(total)||total<0||total>=1e12)errors.push('Total di luar batas nominal aplikasi.');
  return{participants,total,calendarDays:base.calendarDays,errors:[...new Set(errors)]};
+}
+
+// Historical calculators retain the paid-day rules stored with older documents.
+export function calculate(d:TripData,employees:Employee[],tariffs:Tariff[],strict=false){
+ if(d.costVersion!==COST_VERSION)return calculateV3(d,employees,tariffs,strict);
+ const duration=travelDuration(d.departureDate,d.returnDate),prepared={...d,...duration,dayReason:'',costVersion:3};
+ const result=calculateV3(prepared,employees,tariffs,strict);
+ const errors=result.errors.filter(message=>strict||d.departureDate&&d.returnDate||message!=='Hari dibayar harus 1–366 hari.');
+ if(strict&&(d.paidDays!==duration.paidDays||d.nights!==duration.nights))errors.push('Jumlah hari dan malam harus mengikuti tanggal perjalanan. Muat ulang dan simpan draf kembali.');
+ return{...result,errors:[...new Set(errors)]};
 }

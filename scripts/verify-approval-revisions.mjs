@@ -22,14 +22,14 @@ reject(()=>prepareSubmission(returned,'submit',accounts.makerEmail,'Melewati rev
 reject(()=>prepareRevision(returned,accounts.checkerEmail,{purpose:'pendidikan'},employees,tariffs,at));
 reject(()=>prepareRevision(returned,accounts.makerEmail,{},employees,tariffs,at));
 const firstSnapshot=structuredClone(first.submissions[0]);
-const patch={purpose:'pendidikan',paidDays:5,dayReason:'Penetapan HC',participants:returned.document.data.participants.map(p=>({...p,code:undefined}))};
+const patch={purpose:'pendidikan',returnDate:'2026-11-08',participants:returned.document.data.participants.map(p=>({...p,code:undefined}))};
 const revised=prepareRevision(returned,accounts.makerEmail,patch,employees,tariffs,at);
 eq(revised.review.state,'revising');eq(revised.document.revision,2);eq(revised.document.data.nights,4);eq(revised.document.total,3975000);eq(revised.submissions[0],firstSnapshot);eq(returned.document.data.paidDays,3);
 eq(revised.events.at(-1).changes.some(change=>change.field==='paidDays'&&change.before===3&&change.after===5),true);
 reject(()=>prepareSubmission(revised,'resubmit',accounts.makerEmail,' ',employees,tariffs,at));
 reject(()=>prepareSubmission(revised,'resubmit',accounts.makerEmail,'A'.repeat(1001),employees,tariffs,at));
 reject(()=>prepareSubmission(revised,'resubmit',accounts.checkerEmail,'Sudah diperbaiki',employees,tariffs,at));
-const invalid=prepareRevision(returned,accounts.makerEmail,{paidDays:0},employees,tariffs,at);reject(()=>prepareSubmission(invalid,'resubmit',accounts.makerEmail,'Hari diubah',employees,tariffs,at));
+const invalid=prepareRevision(returned,accounts.makerEmail,{returnDate:'2026-11-03'},employees,tariffs,at);reject(()=>prepareSubmission(invalid,'resubmit',accounts.makerEmail,'Hari diubah',employees,tariffs,at));
 const second=prepareSubmission(revised,'resubmit',accounts.makerEmail,'Beban dan hari sudah diperbaiki.',employees,tariffs,at);
 eq(second.review.state,'pending_check');eq(second.review.submittedRevision,2);eq(second.review.checkedRevision,null);eq(second.review.approvedRevision,null);eq(second.submissions.length,2);eq(second.submissions[0],firstSnapshot);eq(second.submissions[1].data.purpose,'pendidikan');eq(second.submissions[1].total,3975000);eq(second.events.at(-1).comment,'Beban dan hari sudah diperbaiki.');
 eq(second.document.number,null);eq(second.document.data.numberOverride,'CONTOH/2026');eq(second.document.id,document.id);
