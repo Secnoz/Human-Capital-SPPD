@@ -3,7 +3,8 @@ import type {Employee} from './domain';
 export function normalizeSearch(value:string){
  return value.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('id-ID').replace(/[^\p{L}\p{N}]+/gu,' ').trim().replace(/\s+/g,' ');
 }
-export function searchEmployees(employees:Employee[],query:string){
+export type SearchableEmployee=Pick<Employee,'id'|'name'|'employeeNo'|'position'|'unit'>;
+export function searchEmployees<T extends SearchableEmployee>(employees:T[],query:string){
  const normalized=normalizeSearch(query),terms=normalized.split(' ').filter(Boolean);
  if(!terms.length)return employees;
  return employees.map(employee=>{
