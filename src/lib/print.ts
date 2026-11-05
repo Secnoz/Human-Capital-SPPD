@@ -1,6 +1,5 @@
 import assets from '../data/print-templates.json';
 import { dateLabel,terbilang,type TripData,type TripRecord,type Settings } from './domain';
-import {drawSppdLetterhead,sppdLetterhead} from './print-letterhead';
 
 const templates=assets.templates as unknown as Record<string,Template>;
 const styles=assets.styles as unknown as Record<string,Style>;
@@ -17,8 +16,7 @@ function resolve(root:unknown,path:string):unknown{return path.split('.').reduce
 export function printedNotes(data:Pick<TripData,'note1'|'note2'>,templateId:string){const note=templateId.startsWith('sppd')?{label:'Catatan 1',text:data.note1||''}:{label:'Catatan 2',text:data.note2||''};return note.text.trim()?[{...note,text:note.text.trim()}]:[];}
 export function printNotesArea(id:string):Box{
  const t=templates[id];if(!t)throw new Error('Template tidak tersedia.');
- const letterhead=sppdLetterhead(id,t.page);
- if(letterhead)return{x:44.55,y:710,width:t.page.widthPt-89.1,height:letterhead.footer.box.y-12-710};
+ if(id.startsWith('sppd'))return{x:44.55,y:710,width:t.page.widthPt-89.1,height:t.page.heightPt-764};
  const signature=t.cells.find(c=>c.binding==='document.signatureName');
  return{x:50.8,y:425,width:(signature?.pageBoxPt.x??518)-70.8,height:t.page.heightPt-479};
 }
@@ -90,8 +88,6 @@ function fieldLabel(binding:string){const match=/^participants\.(\d+)\.(.+)$/.ex
 export async function renderDocument(trip:TripRecord,settings:Settings,id:string,scale=2.8){
  const template=templates[id];if(!template)throw new Error('Versi template dokumen tidak tersedia.');
  await document.fonts.ready;const canvas=document.createElement('canvas');canvas.width=Math.round(template.page.widthPt*scale);canvas.height=Math.round(template.page.heightPt*scale);const ctx=canvas.getContext('2d')!;ctx.scale(scale,scale);ctx.fillStyle='#fff';ctx.fillRect(0,0,template.page.widthPt,template.page.heightPt);const values=printValues(trip,settings,template),issues:string[]=[];
- const letterhead=sppdLetterhead(id,template.page);
- if(letterhead)await drawSppdLetterhead(ctx,letterhead);
  const participantFit=fitParticipantRows(ctx,template,values);
  for(const r of template.borderRectsPt){ctx.fillStyle=r.color||'#000';ctx.fillRect(r.x,r.y,r.width,r.height);}
  for(const cell of template.cells){
@@ -119,7 +115,7 @@ export async function renderDocument(trip:TripRecord,settings:Settings,id:string
  }
  const notes=renderNotes(ctx,trip.data,id,issues);
  if(trip.status!=='final'){ctx.save();ctx.translate(template.page.widthPt/2,template.page.heightPt/2);ctx.rotate(-Math.PI/7);ctx.font='bold 64px Arial';ctx.fillStyle=trip.status==='cancelled'?'rgba(180,35,35,.18)':'rgba(65,85,120,.13)';ctx.textAlign='center';ctx.fillText(trip.status==='cancelled'?'BATAL':'DRAF',0,0);ctx.restore();}
- return{canvas,widthPt:template.page.widthPt,heightPt:template.page.heightPt,issues,notes,letterhead,participantLayout:[...participantFit].map(([binding,fit])=>({binding,...fit}))};
+ return{canvas,widthPt:template.page.widthPt,heightPt:template.page.heightPt,issues,notes,participantLayout:[...participantFit].map(([binding,fit])=>({binding,...fit}))};
 }
 function concat(parts:Uint8Array[]){const out=new Uint8Array(parts.reduce((n,p)=>n+p.length,0));let at=0;for(const p of parts){out.set(p,at);at+=p.length;}return out;}
 // A4 PDF with high-resolution JPEG pages. Browser uses locally installed Office fonts.
