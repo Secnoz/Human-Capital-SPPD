@@ -1,7 +1,7 @@
 'use client';
 import {useEffect,useState} from 'react';
 import {calculate,calculateLegacy,defaultTrip,seedTariffs,type TripRecord,type Settings,type Scenario,type Employee} from '../../src/lib/domain';
-import {renderDocument,templateIds,makePdf} from '../../src/lib/print';
+import {renderDocument,templateIds,makePdf,printNotesArea} from '../../src/lib/print';
 import {download} from '../../src/lib/xlsx';
 type Check={label:string;passed:boolean};
 const settings:Settings={company:'BANK KALSEL',issueCity:'Banjarmasin',signerName:'Penandatangan Uji',signerPosition:'Kepala',commander:'Kepala Divisi Human Capital',numberPattern:'{sequence}/SPPD/Km-DHC/KP/{year}',mapsKey:'',validFrom:'2026-01-01',templateVersion:'2026-10-23-v1'};
@@ -17,4 +17,14 @@ if(scenario==='luar_provinsi'&&purpose==='pendidikan'){
   results.push({label:id+': teks melampaui kapasitas tetap ditolak',passed:overflow.issues.some(issue=>issue.includes(id.startsWith('sppd')?'Jabatan peserta 1':'Nama penerima peserta 1'))});
  }
 }
-}setPages(output);setChecks(results);})();},[]);return <main style={{padding:25}}><h1>QA cetak lokal · 8 template</h1><p>Data sintetis · 8/9 peserta sesuai kapasitas · semua nomor rekening teks.</p><p role="status">{pages.length} template diperiksa; {pages.flatMap(p=>p.issues).length} masalah ruang cetak.</p><p role="status">{checks.filter(c=>c.passed).length}/{checks.length} pemeriksaan regresi lulus.</p>{checks.filter(c=>!c.passed).map(c=><p key={c.label}>{c.label}: GAGAL</p>)}<button className="button primary" disabled={pages.length!==8} onClick={async()=>download(await makePdf(pages),'QA-8-Template-SPPD.pdf')}>Unduh PDF uji 8 template</button>{pages.map(p=><section key={p.id}><h2>{p.id}</h2><p>{p.issues.join('\n')||'Lulus pemeriksaan ruang cetak'}</p><p>{p.participantLayout.length?'Teks panjang dibungkus dalam batas tabel.':'Tata letak asli dipertahankan.'}</p><p>{p.notes.map(n=>n.label+': '+n.lines.join(' ')).join(' | ')}</p><img style={{width:'100%',maxWidth:1100,background:'white',border:'1px solid #ddd',marginBottom:30}} alt={p.id} src={p.canvas.toDataURL('image/png')}/></section>)}</main>;}
+}
+for(const page of output){
+ const letterhead=page.letterhead;
+ results.push({label:page.id+': kop hanya pada lembar SPPD',passed:page.id.startsWith('sppd')?!!letterhead:letterhead===null});
+ if(letterhead){
+  const notes=printNotesArea(page.id);
+  results.push({label:page.id+': kop tidak menyentuh judul',passed:letterhead.header.box.y+letterhead.header.box.height<139.35});
+  results.push({label:page.id+': catatan tidak menyentuh footer',passed:notes.height>=50&&notes.y+notes.height<=letterhead.footer.box.y-12+.01});
+ }
+}
+setPages(output);setChecks(results);})();},[]);return <main style={{padding:25}}><h1>QA cetak lokal · 8 template</h1><p>Data sintetis · 8/9 peserta sesuai kapasitas · semua nomor rekening teks.</p><p role="status">{pages.length} template diperiksa; {pages.flatMap(p=>p.issues).length} masalah ruang cetak.</p><p role="status">{checks.filter(c=>c.passed).length}/{checks.length} pemeriksaan regresi lulus.</p>{checks.filter(c=>!c.passed).map(c=><p key={c.label}>{c.label}: GAGAL</p>)}<button className="button primary" disabled={pages.length!==8} onClick={async()=>download(await makePdf(pages),'QA-8-Template-SPPD.pdf')}>Unduh PDF uji 8 template</button><button className="button secondary" disabled={!pages.some(p=>p.id==='sppd-dp')} onClick={async()=>download(await makePdf(pages.filter(p=>p.id==='sppd-dp')),'Contoh-SPPD-dengan-Kop.pdf')}>Unduh contoh SPPD dengan kop</button>{pages.map(p=><section key={p.id}><h2>{p.id}</h2><p>{p.issues.join('\n')||'Lulus pemeriksaan ruang cetak'}</p><p>{p.participantLayout.length?'Teks panjang dibungkus dalam batas tabel.':'Tata letak asli dipertahankan.'}</p><p>{p.notes.map(n=>n.label+': '+n.lines.join(' ')).join(' | ')}</p><img style={{width:'100%',maxWidth:1100,background:'white',border:'1px solid #ddd',marginBottom:30}} alt={p.id} src={p.canvas.toDataURL('image/png')}/></section>)}</main>;}
